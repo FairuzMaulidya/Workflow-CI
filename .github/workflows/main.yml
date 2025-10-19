@@ -20,13 +20,13 @@ jobs:
       - name: Run actions/checkout
         uses: actions/checkout@v3
 
-      # 2. Setup Python
+      # 2. Setup Python (hanya untuk memastikan environment dasar)
       - name: Set up Python 3.12.7
         uses: actions/setup-python@v4
         with:
-          python-version: "3.12.7"
+          python-version: "3.13.5"
 
-      # 3. List files (optional, membantu cek struktur)
+      # 3. List files (optional untuk debug)
       - name: List project structure
         run: ls -R
 
@@ -43,16 +43,18 @@ jobs:
         run: |
           source /usr/share/miniconda/etc/profile.d/conda.sh
           conda env create -f MLProject/conda.yaml || conda env update -f MLProject/conda.yaml --prune
-          conda activate student-performance
+          conda activate mlflow-env
           which python
           python --version
 
-      # 6. Run mlflow project
+      # 6. Run MLflow project
       - name: Run mlflow project
         shell: bash -l {0}
         run: |
           source /usr/share/miniconda/etc/profile.d/conda.sh
-          conda activate student-performance
+          conda activate mlflow-env
+          which mlflow
+          mlflow --version
           mlflow run . --env-manager=local
 
       # 7. Get latest run_id
