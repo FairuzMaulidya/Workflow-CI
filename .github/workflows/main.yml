@@ -1,0 +1,56 @@
+name: CI_MLflow_Project
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
+  MLFLOW_TRACKING_USERNAME: ${{ secrets.MLFLOW_TRACKING_USERNAME }}
+  MLFLOW_TRACKING_PASSWORD: ${{ secrets.MLFLOW_TRACKING_PASSWORD }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout repo
+      - name: Run actions/checkout
+        uses: actions/checkout@v3
+
+      # 2. Setup Python
+      - name: Set up Python 3.13.5
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12.7"
+
+      # 3. Check Env Variables
+      - name: Check Env
+        shell: bash -l {0}
+        run: |
+          echo "MLFLOW_TRACKING_URI=$MLFLOW_TRACKING_URI"
+          echo "MLFLOW_TRACKING_USERNAME=$MLFLOW_TRACKING_USERNAME"
+
+      # 4. Install dependencies from conda.yaml
+      - name: Install dependencies (conda)
+        shell: bash -l {0}
+        run: |
+          conda env create -f conda.yaml || conda env update -f conda.yaml --prune
+          conda activate student-performance
+
+      # 5. Run mlflow project
+      - name: Run mlflow project
+        shell: bash -l {0}
+        run: |
+          conda activate student-performance
+          mlflow run . --env-manager=local
+
+      # 6. Get latest run_id
+      - name: Get latest MLflow run_id
+        shell: bash -l {0}
+        run: |
+          RUN_ID=$(ls -td mlruns/0/*/ | head -n 1 | cut -d'/' -f3)
+          echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
+          echo "✅ Latest run_id: $RUN_ID"
