@@ -17,27 +17,27 @@ jobs:
 
     steps:
       # 1. Checkout repo
-      - name: Run actions/checkout
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2. Setup Python (hanya untuk memastikan environment dasar)
-      - name: Set up Python 3.12.7
+      # 2. Setup Python
+      - name: Set up Python 3.13.5
         uses: actions/setup-python@v4
         with:
           python-version: "3.13.5"
 
-      # 3. List files (optional untuk debug)
+      # 3. List project structure (debug)
       - name: List project structure
         run: ls -R
 
-      # 4. Check Env Variables
-      - name: Check Env
+      # 4. Check environment variables
+      - name: Check Env Variables
         shell: bash -l {0}
         run: |
           echo "MLFLOW_TRACKING_URI=$MLFLOW_TRACKING_URI"
           echo "MLFLOW_TRACKING_USERNAME=$MLFLOW_TRACKING_USERNAME"
 
-      # 5. Install dependencies (conda)
+      # 5. Install dependencies from conda.yaml (inside MLProject folder)
       - name: Install dependencies (conda)
         shell: bash -l {0}
         run: |
@@ -47,20 +47,22 @@ jobs:
           which python
           python --version
 
-      # 6. Run MLflow project
-      - name: Run mlflow project
+      # 6. Run MLflow project (inside MLProject folder)
+      - name: Run MLflow project
         shell: bash -l {0}
         run: |
           source /usr/share/miniconda/etc/profile.d/conda.sh
           conda activate mlflow-env
+          cd MLProject
           which mlflow
           mlflow --version
           mlflow run . --env-manager=local
 
-      # 7. Get latest run_id
+      # 7. Get latest MLflow run_id
       - name: Get latest MLflow run_id
         shell: bash -l {0}
         run: |
+          cd MLProject
           RUN_ID=$(ls -td mlruns/0/*/ | head -n 1 | cut -d'/' -f3)
           echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
           echo "✅ Latest run_id: $RUN_ID"
