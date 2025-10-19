@@ -21,33 +21,41 @@ jobs:
         uses: actions/checkout@v3
 
       # 2. Setup Python
-      - name: Set up Python 3.13.5
+      - name: Set up Python 3.12.7
         uses: actions/setup-python@v4
         with:
           python-version: "3.12.7"
 
-      # 3. Check Env Variables
+      # 3. List files (optional, membantu cek struktur)
+      - name: List project structure
+        run: ls -R
+
+      # 4. Check Env Variables
       - name: Check Env
         shell: bash -l {0}
         run: |
           echo "MLFLOW_TRACKING_URI=$MLFLOW_TRACKING_URI"
           echo "MLFLOW_TRACKING_USERNAME=$MLFLOW_TRACKING_USERNAME"
 
-      # 4. Install dependencies from conda.yaml
+      # 5. Install dependencies (conda)
       - name: Install dependencies (conda)
         shell: bash -l {0}
         run: |
-          conda env create -f conda.yaml || conda env update -f conda.yaml --prune
+          source /usr/share/miniconda/etc/profile.d/conda.sh
+          conda env create -f MLProject/conda.yaml || conda env update -f MLProject/conda.yaml --prune
           conda activate student-performance
+          which python
+          python --version
 
-      # 5. Run mlflow project
+      # 6. Run mlflow project
       - name: Run mlflow project
         shell: bash -l {0}
         run: |
+          source /usr/share/miniconda/etc/profile.d/conda.sh
           conda activate student-performance
           mlflow run . --env-manager=local
 
-      # 6. Get latest run_id
+      # 7. Get latest run_id
       - name: Get latest MLflow run_id
         shell: bash -l {0}
         run: |
