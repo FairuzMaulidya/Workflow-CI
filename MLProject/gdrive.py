@@ -60,7 +60,7 @@ def upload_directory(local_dir_path, parent_drive_id):
             ).execute()
 
 # === 4. Upload semua run_id di ./mlruns/0 ===
-local_mlruns_0 = "./mlruns/0"
+local_mlruns_0 = os.path.join(os.path.dirname(__file__), "mlruns", "0")
 
 if not os.path.exists(local_mlruns_0):
     print("⚠️ Folder mlruns/0 tidak ditemukan, tidak ada yang diupload.")
