@@ -4,21 +4,17 @@ from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 
-# === 1. Load credential service account ===
-creds_json = os.environ.get("GDRIVE_CREDENTIALS")
-if not creds_json:
-    raise ValueError("❌ Environment variable 'GDRIVE_CREDENTIALS' tidak ditemukan.")
 
+creds_json = os.environ.get("GDRIVE_CREDENTIALS")
 creds_info = json.loads(creds_json)
+
 credentials = Credentials.from_service_account_info(
     creds_info,
     scopes=["https://www.googleapis.com/auth/drive"]
 )
 
-# === 2. Build Drive API ===
 service = build("drive", "v3", credentials=credentials)
 
-# === 3. Shared Drive ID / Folder tujuan ===
 SHARED_DRIVE_ID = os.environ.get("GDRIVE_FOLDER_ID")
 if not SHARED_DRIVE_ID:
     raise ValueError("❌ Environment variable 'GDRIVE_FOLDER_ID' tidak ditemukan.")
@@ -43,6 +39,7 @@ def upload_directory(local_dir_path, parent_drive_id):
                 fields="id",
                 supportsAllDrives=True
             ).execute()
+
             new_folder_id = created_folder["id"]
             print(f"📁 Created folder: {item_name} (ID: {new_folder_id})")
             upload_directory(item_path, new_folder_id)
@@ -62,6 +59,7 @@ def upload_directory(local_dir_path, parent_drive_id):
 
 # === 5. Upload semua run_id di ./mlruns/0 ===
 local_mlruns_0 = "./mlruns/0"
+
 if not os.path.exists(local_mlruns_0):
     print("⚠️ Folder mlruns/0 tidak ditemukan, tidak ada yang diupload.")
 else:
