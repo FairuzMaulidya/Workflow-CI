@@ -19,18 +19,27 @@ jobs:
       - name: 🚀 Set up job
         run: echo "Starting CI job..."
 
-      - name: 🧩 Checkout code
+      - name: 🧩 Run actions/checkout@v3
         uses: actions/checkout@v3
 
-      - name: 🐍 Set up Python
+      - name: 🐍 Set up Python 3.12.7
         uses: actions/setup-python@v4
         with:
           python-version: "3.12.7"
 
+      - name: 🔍 Check Env
+        run: |
+          echo "Python version:"
+          python --version
+          echo "Current directory:"
+          pwd
+          echo "List files:"
+          ls -R .
+
       - name: 📦 Install dependencies
         run: |
           pip install --upgrade pip
-          pip install mlflow==2.16.2 joblib scikit-learn pandas numpy
+          pip install mlflow==2.16.2 joblib scikit-learn pandas numpy matplotlib
           pip install google-auth google-auth-oauthlib google-auth-httplib2 google-api-python-client
 
       - name: 🔧 Set MLflow Tracking URI
@@ -38,11 +47,10 @@ jobs:
           echo "Setting MLflow Tracking URI..."
           export MLFLOW_TRACKING_URI=${{ secrets.MLFLOW_TRACKING_URI }}
 
-      - name: 🧪 Run MLflow project
+      - name: 🧪 Run mlflow project (train model)
         run: |
           cd MLProject
-          mlflow run . --env-manager=local
-
+          python modelling.py 100 10  # Menjalankan training model dengan parameter default
           echo "✅ MLflow project completed."
           ls -R .
 
@@ -52,29 +60,14 @@ jobs:
           GOOGLE_APPLICATION_CREDENTIALS_JSON: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
         run: |
           cd MLProject
-          if [ ! -d "mlruns" ]; then
-            echo "⚠️ Folder mlruns tidak ditemukan, membuat dummy zip..."
-            echo "No artifacts found." > dummy.txt
-            zip mlruns.zip dummy.txt
-          else
-            zip -r mlruns.zip mlruns
-          fi
+          python gdrive.py
+          echo "✅ Upload to Google Drive selesai."
 
-          echo "${GOOGLE_APPLICATION_CREDENTIALS_JSON}" > credentials.json
+      - name: 🧩 Post Set up Python 3.12.7
+        run: echo "Post Python setup completed."
 
-          python <<EOF
-          import json
-          from google.oauth2 import service_account
-          from googleapiclient.discovery import build
-          from googleapiclient.http import MediaFileUpload
+      - name: 🧩 Post Run actions/checkout@v3
+        run: echo "Post checkout completed."
 
-          creds_info = json.load(open("credentials.json"))
-          creds = service_account.Credentials.from_service_account_info(
-              creds_info, scopes=["https://www.googleapis.com/auth/drive.file"]
-          )
-          service = build("drive", "v3", credentials=creds)
-          file_metadata = {"name": "mlruns.zip", "parents": ["${{ secrets.GDRIVE_FOLDER_ID }}"]}
-          media = MediaFileUpload("mlruns.zip", mimetype="application/zip")
-          file = service.files().create(body=file_metadata, media_body=media, fields="id").execute()
-          print("✅ File berhasil diupload ke Google Drive dengan ID:", file.get("id"))
-          EOF
+      - name: ✅ Complete job
+        run: echo "Workflow CI selesai dengan sukses!"
