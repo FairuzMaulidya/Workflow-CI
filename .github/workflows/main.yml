@@ -41,7 +41,8 @@ jobs:
       - name: Install dependencies
         run: |
           echo "📦 Installing base dependencies..."
-          pip install mlflow joblib scikit-learn pandas numpy
+          pip install --upgrade pip
+          pip install mlflow==2.16.2 joblib scikit-learn pandas numpy
 
       # 6️⃣ Set MLflow Tracking URI
       - name: Set MLflow Tracking URI
