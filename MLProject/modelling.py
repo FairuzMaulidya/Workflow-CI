@@ -10,13 +10,22 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 import mlflow
 import mlflow.sklearn
 import sys
+import shutil  # ✅ tambahan untuk salin mlruns
 
 if __name__ == "__main__":
     warnings.filterwarnings("ignore")
     np.random.seed(42)
 
-    # 
+    # === Setup dual logging: remote (DAGsHub) + local backup ===
     base_dir = os.path.dirname(os.path.abspath(__file__))
+    local_mlruns = os.path.join(base_dir, "mlruns")
+    os.makedirs(local_mlruns, exist_ok=True)
+
+    # Gunakan DAGsHub Tracking URI dari environment (secrets)
+    dagshub_uri = os.getenv("MLFLOW_TRACKING_URI", f"file:{local_mlruns}")
+    mlflow.set_tracking_uri(dagshub_uri)
+
+    # 
     dataset_path = os.path.join(base_dir, "StudentsPerformance_preprocessing.joblib")
     split_data = load(dataset_path)
 
@@ -30,11 +39,10 @@ if __name__ == "__main__":
     max_depth = int(sys.argv[2]) if len(sys.argv) > 2 else 10
 
     # 
-    mlflow.set_tracking_uri("file:./mlruns")
     mlflow.sklearn.autolog(log_input_examples=False, log_models=False)
 
     # 
-    with mlflow.start_run():
+    with mlflow.start_run() as run:
         start_time = time.time()
 
         model = RandomForestClassifier(
@@ -94,6 +102,18 @@ if __name__ == "__main__":
             sk_model=model,
             artifact_path="model"
         )
+
+        # ✅ Backup mlruns agar bisa diupload ke Google Drive
+        run_id = run.info.run_id
+        local_backup = os.path.join(base_dir, "mlruns_backup")
+        os.makedirs(local_backup, exist_ok=True)
+        try:
+            mlruns_dir = os.path.join(base_dir, "mlruns")
+            if os.path.exists(mlruns_dir):
+                shutil.copytree(mlruns_dir, local_backup, dirs_exist_ok=True)
+                print(f"📂 Backup MLflow run ke: {local_backup}")
+        except Exception as e:
+            print(f"⚠️ Gagal backup mlruns: {e}")
 
     print(f"\n✅ Model selesai dilatih dengan hyperparameter:")
     print(f"   n_estimators = {n_estimators}")
