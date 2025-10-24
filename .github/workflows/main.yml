@@ -38,10 +38,11 @@ jobs:
           echo "Setting MLflow Tracking URI..."
           export MLFLOW_TRACKING_URI=${{ secrets.MLFLOW_TRACKING_URI }}
 
-      - name: 🚀 Run MLflow project
+      - name: 🧪 Run MLflow project
         run: |
           cd MLProject
-          mlflow run . --env-manager=local --no-conda || exit 1
+          mlflow run . --env-manager=local
+
           echo "✅ MLflow project completed."
           ls -R .
 
