@@ -16,6 +16,7 @@ credentials = Credentials.from_service_account_info(
     scopes=["https://www.googleapis.com/auth/drive"]
 )
 
+# ✅ Tambahkan parameter `supportsAllDrives=True` ke setiap call API
 service = build("drive", "v3", credentials=credentials)
 
 # === 2. Ambil folder tujuan di Google Drive pribadi ===
@@ -25,11 +26,6 @@ if not PARENT_FOLDER_ID:
 
 # === 3. Fungsi upload rekursif ===
 def upload_directory(local_dir_path, parent_drive_id):
-    """
-    Rekursif:
-    - Jika folder → buat folder di Drive, lalu upload isinya lagi.
-    - Jika file → langsung upload ke folder parent.
-    """
     for item_name in os.listdir(local_dir_path):
         item_path = os.path.join(local_dir_path, item_name)
         if os.path.isdir(item_path):
@@ -40,7 +36,8 @@ def upload_directory(local_dir_path, parent_drive_id):
             }
             created_folder = service.files().create(
                 body=folder_meta,
-                fields="id"
+                fields="id",
+                supportsAllDrives=True   # ✅ penting!
             ).execute()
 
             new_folder_id = created_folder["id"]
@@ -56,7 +53,8 @@ def upload_directory(local_dir_path, parent_drive_id):
             service.files().create(
                 body=file_meta,
                 media_body=media,
-                fields="id"
+                fields="id",
+                supportsAllDrives=True   # ✅ penting juga
             ).execute()
 
 # === 4. Upload semua run_id di ./mlruns/0 ===
@@ -75,8 +73,10 @@ else:
             }
             run_folder = service.files().create(
                 body=folder_meta,
-                fields="id"
+                fields="id",
+                supportsAllDrives=True  # ✅ penting juga
             ).execute()
+
             run_folder_id = run_folder["id"]
             print(f"=== Created run_id folder: {run_id} (ID: {run_folder_id}) ===")
             upload_directory(run_path, run_folder_id)
