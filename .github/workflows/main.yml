@@ -16,86 +16,87 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout repo
+      # 1️⃣ Set up job
+      - name: Set up job
+        run: echo "🚀 Starting CI job..."
+
+      # 2️⃣ Run checkout
       - name: Run actions/checkout@v3
         uses: actions/checkout@v3
 
-      # 2. Setup Python (versi stabil MLflow)
+      # 3️⃣ Set up Python
       - name: Set up Python 3.12.7
         uses: actions/setup-python@v4
         with:
           python-version: "3.12.7"
 
-      # 3. Check environment variables
+      # 4️⃣ Check Env
       - name: Check Env
         run: |
-          echo "🔑 MLFLOW_TRACKING_URI: $MLFLOW_TRACKING_URI"
-          echo "👤 MLFLOW_TRACKING_USERNAME: $MLFLOW_TRACKING_USERNAME"
-
-      # 4. Install dependencies (dari conda.yaml di dalam MLProject)
-      - name: Install dependencies
-        shell: bash -l {0}
-        run: |
-          echo "📦 Installing dependencies from conda.yaml..."
-          source /usr/share/miniconda/etc/profile.d/conda.sh
-          conda env create -f MLProject/conda.yaml || conda env update -f MLProject/conda.yaml --prune
-          conda activate mlflow-env
-          which python
+          echo "🔍 Checking environment..."
+          echo "MLFLOW_TRACKING_URI: $MLFLOW_TRACKING_URI"
           python --version
 
-      # 5. Set MLflow Tracking URI (optional debug)
-      - name: Set MLflow Tracking URI
-        shell: bash -l {0}
+      # 5️⃣ Install dependencies
+      - name: Install dependencies
         run: |
-          source /usr/share/miniconda/etc/profile.d/conda.sh
-          conda activate mlflow-env
-          echo "MLFLOW_TRACKING_URI=$MLFLOW_TRACKING_URI"
-          echo "Tracking URI set ✅"
+          echo "📦 Installing base dependencies..."
+          pip install mlflow joblib scikit-learn pandas numpy
 
-      # 6. Run MLflow project (pastikan mlruns terbentuk)
+      # 6️⃣ Set MLflow Tracking URI
+      - name: Set MLflow Tracking URI
+        run: |
+          echo "🔧 Setting MLflow Tracking URI..."
+          export MLFLOW_TRACKING_URI=${{ secrets.MLFLOW_TRACKING_URI }}
+          echo "✅ MLflow Tracking URI set."
+
+      # 7️⃣ Run MLflow project
       - name: Run MLflow project
-        shell: bash -l {0}
         run: |
           echo "🚀 Running MLflow project..."
-          source /usr/share/miniconda/etc/profile.d/conda.sh
-          conda activate mlflow-env
           cd MLProject
           mlflow run . --env-manager=local
-          echo "✅ MLflow project finished"
+          echo "✅ MLflow project completed."
 
-      # 7. Debug - cek apakah mlruns sudah terbentuk
-      - name: Debug - list mlruns folders
+      # 8️⃣ Install Python dependencies (for upload)
+      - name: Install Python dependencies
         run: |
-          echo "📂 Listing mlruns directories..."
-          find . -type d -name "mlruns" || echo "⚠️ Folder mlruns belum ditemukan!"
+          pip install google-auth google-auth-oauthlib google-auth-httplib2 google-api-python-client
 
-      # 8. Upload artifacts ke Google Drive
+      # 9️⃣ Upload to Google Drive
       - name: Upload to Google Drive
         env:
-          GDRIVE_ACCESS_TOKEN: ${{ secrets.GDRIVE_ACCESS_TOKEN }}
+          GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
+          GOOGLE_APPLICATION_CREDENTIALS_JSON: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
         run: |
           echo "📤 Uploading MLflow artifacts to Google Drive..."
-
-          # Cari folder mlruns di lokasi yang ada
-          if [ -d "MLProject/mlruns" ]; then
-            cd MLProject/mlruns/0/
-          elif [ -d "mlruns" ]; then
-            cd mlruns/0/
-          else
+          cd MLProject
+          if [ ! -d "mlruns" ]; then
             echo "❌ Folder mlruns tidak ditemukan. Pastikan MLflow berhasil dijalankan."
             exit 1
           fi
 
-          LATEST_RUN=$(ls -td */ | head -n 1 | cut -d'/' -f1)
-          zip -r mlflow_artifacts.zip $LATEST_RUN
+          zip -r mlruns.zip mlruns
+          echo "✅ File mlruns.zip berhasil dibuat."
+          echo "${GOOGLE_APPLICATION_CREDENTIALS_JSON}" > credentials.json
 
-          echo "📦 Artefak MLflow ditemukan: $LATEST_RUN"
-          echo "🚀 Uploading to Google Drive..."
+          python <<EOF
+          import json
+          from google.oauth2 import service_account
+          from googleapiclient.discovery import build
+          from googleapiclient.http import MediaFileUpload
 
-          curl -X POST -L \
-            -H "Authorization: Bearer $GDRIVE_ACCESS_TOKEN" \
-            -F "metadata={name : 'mlflow_artifacts_${LATEST_RUN}.zip'};type=application/json;charset=UTF-8" \
-            -F "file=@mlflow_artifacts.zip;type=application/zip" \
-            "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart"
+          creds_info = json.load(open("credentials.json"))
+          creds = service_account.Credentials.from_service_account_info(
+              creds_info, scopes=["https://www.googleapis.com/auth/drive.file"]
+          )
+          service = build("drive", "v3", credentials=creds)
+          file_metadata = {"name": "mlruns.zip", "parents": ["${{ secrets.GDRIVE_FOLDER_ID }}"]}
+          media = MediaFileUpload("mlruns.zip", mimetype="application/zip")
+          file = service.files().create(body=file_metadata, media_body=media, fields="id").execute()
+          print("✅ File berhasil diupload ke Google Drive dengan ID:", file.get("id"))
+          EOF
 
-          echo "✅ Upload selesai!"
+      # 🔟 Complete job
+      - name: Complete job
+        run: echo "🎉 CI workflow completed successfully!"
