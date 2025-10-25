@@ -65,7 +65,7 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
 
-      - name: 🛠️ Build Docker Image (Python 3.10)
+      - name: 🛠️ Build Docker Image (MLflow 2.16.2)
         run: |
           cd MLProject
           echo "🔍 Searching for latest MLflow run..."
@@ -77,10 +77,11 @@ jobs:
             ls -R mlruns/
             exit 1
           fi
-          mlflow models build-docker \
-            --model-uri "$RUN_PATH/artifacts/model" \
-            --name "workflow-ci" \
-            --build-image python:3.10-slim
+          echo "📦 Generating Dockerfile from MLflow model..."
+          mlflow models generate-dockerfile --model-uri "$RUN_PATH/artifacts/model" --output-dir docker_model
+          cd docker_model
+          echo "🐳 Building Docker image..."
+          docker build -t workflow-ci .
 
       - name: 🏷️ Tag Docker Image
         run: |
