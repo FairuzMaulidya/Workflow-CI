@@ -41,30 +41,15 @@ jobs:
           echo "MLflow project completed."
           ls -R .
 
-      - name: Get latest MLflow run_id
+      - name: Get latest local MLflow run_id
         run: |
-          # Cek apakah ada folder lokal mlruns
           if [ -d "MLProject/mlruns/0" ]; then
             RUN_ID=$(ls -td MLProject/mlruns/0/*/ | head -n 1 | cut -d'/' -f4)
             echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
             echo "Latest run_id: $RUN_ID"
           else
-            # Kalau tidak ada, export placeholder
             echo "RUN_ID=" >> $GITHUB_ENV
             echo "No local MLflow run found."
-          fi
-
-      - name: Download MLflow model artifact
-        run: |
-          cd MLProject
-          if [ -n "$RUN_ID" ]; then
-            echo "Downloading MLflow model artifact for run $RUN_ID..."
-            mlflow artifacts download \
-              --run-id $RUN_ID \
-              --artifact-path model \
-              -d mlruns/0/$RUN_ID/artifacts/model
-          else
-            echo "No RUN_ID available, skipping artifact download."
           fi
 
       - name: Upload MLflow runs to GitHub LFS
@@ -88,10 +73,8 @@ jobs:
       - name: Build Docker Image
         run: |
           cd MLProject
-          # Gunakan folder lokal mlruns/0/<run_id> sebagai path model
           if [ -n "$RUN_ID" ]; then
             MODEL_PATH="mlruns/0/$RUN_ID/artifacts/model"
-
             echo "Generating Dockerfile from local MLflow model..."
             mlflow models generate-dockerfile \
               --model-uri "$MODEL_PATH" \
