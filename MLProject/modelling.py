@@ -18,9 +18,6 @@ if __name__ == "__main__":
 
     # 
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    mlruns_path = os.path.join(base_dir, "mlruns")
-    os.makedirs(mlruns_path, exist_ok=True)
-    mlflow.set_tracking_uri(f"file://{mlruns_path}")
     dataset_path = os.path.join(base_dir, "StudentsPerformance_preprocessing.joblib")
     split_data = load(dataset_path)
 
