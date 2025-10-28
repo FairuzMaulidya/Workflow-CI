@@ -13,6 +13,7 @@ import sys
 
 # 
 if __name__ == "__main__":
+
     warnings.filterwarnings("ignore")
     np.random.seed(42)
 
@@ -34,6 +35,8 @@ if __name__ == "__main__":
     mlflow.sklearn.autolog(log_input_examples=False, log_models=False)
 
     # 
+    mlflow.set_tracking_uri("file://" + os.path.join(base_dir, "mlruns"))
+
     with mlflow.start_run():
         start_time = time.time()
 
