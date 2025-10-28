@@ -32,7 +32,7 @@ if __name__ == "__main__":
     max_depth = int(sys.argv[2]) if len(sys.argv) > 2 else 10
 
     # 
-    mlflow.sklearn.autolog(log_input_examples=False, log_models=False)
+    mlflow.sklearn.autolog(log_input_examples=False, log_models=True)
 
     # 
     mlflow.set_tracking_uri("file://" + os.path.join(base_dir, "mlruns"))
