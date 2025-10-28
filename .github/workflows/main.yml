@@ -20,7 +20,7 @@ jobs:
 
     steps:
       - name: Set up job
-        run: echo "Initializing"
+        run: echo "Starting CI job..."
 
       - name: Run actions/checkout@v3
         uses: actions/checkout@v3
@@ -36,40 +36,40 @@ jobs:
         run: |
           echo "Python version:"
           python --version
-          echo "MLflow tracking URI: $MLFLOW_TRACKING_URI"
+          echo "MLflow URI: $MLFLOW_TRACKING_URI"
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install mlflow==2.9.2 joblib scikit-learn pandas numpy matplotlib gitpython
+          pip install --upgrade pip
+          pip install mlflow==2.9.2 joblib scikit-learn pandas numpy matplotlib
 
       - name: Run mlflow project
         run: |
           cd MLProject
           python modelling.py 100 10
-          echo "MLflow Done."
+          echo "MLflow project completed."
           ls -R .
 
       - name: Get latest MLflow run_id
         run: |
           RUN_ID=$(ls -td MLProject/mlruns/0/*/ | head -n 1 | cut -d'/' -f4)
           echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
-          echo "Latest run ID: $RUN_ID"
+          echo "Latest run_id: $RUN_ID"
 
-      - name: Upload MLflow artifacts to Git LFS
+      - name: Install Python dependencies
         run: |
-          if [ -d "MLProject/mlruns" ]; then
-            git config --global user.name "${{ secrets.username }}"
-            git config --global user.email "${{ secrets.email }}"
-            git lfs install
-            git add -f MLProject/mlruns/
-            git commit -m "Upload MLflow artifacts" || echo "No changes to commit"
-            git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
-            git push origin main || echo "Nothing pushed"
-          else
-           echo "MLruns folder not found. Skipping LFS upload."
-          fi
+          pip install gitpython
 
+      - name: Upload to GitHub LFS
+        run: |
+          git config --global user.name ${{ secrets.username }}
+          git config --global user.email ${{ secrets.email }}
+          git lfs install
+          git add -f MLProject/mlruns/
+          git commit -m "Save mlruns from CI run" || true
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+          git push origin main
+          echo "Upload to GitHub LFS selesai."
 
       - name: Build Docker Model
         run: |
@@ -77,28 +77,35 @@ jobs:
           RUN_PATH=$(ls -td mlruns/0/*/ | grep -v datasets | head -n 1)
           MODEL_PATH="$RUN_PATH/artifacts/model"
 
-          echo "Generating Dockerfile from MLflow model local on Github"
+          echo "Generating Dockerfile from MLflow model..."
           mlflow models generate-dockerfile \
             --model-uri "$MODEL_PATH" \
             --output-directory docker_build \
             --env-manager local
 
-          echo "Adding base image"
+          echo "Add base image manually..."
           sed -i '1i FROM python:3.10-slim' docker_build/Dockerfile
 
-          echo "Cleaning unnecessary dependencies"
+          echo "Fix get-pip.py URL for Python 3.8..."
+          sed -i 's|https://bootstrap.pypa.io/get-pip.py|https://bootstrap.pypa.io/pip/3.8/get-pip.py|g' docker_build/Dockerfile
+
+          echo "Inject git and distutils install commands..."
+          sed -i '/RUN git clone/i RUN apt-get update && apt-get install -y git python3-distutils && rm -rf /var/lib/apt/lists/*' docker_build/Dockerfile
+
+          echo "Remove Java and Maven sections..."
           sed -i '/openjdk/d' docker_build/Dockerfile
           sed -i '/maven/d' docker_build/Dockerfile
           sed -i '/mvn/d' docker_build/Dockerfile
           sed -i '/java/d' docker_build/Dockerfile
 
-          echo "Preview of cleaned Dockerfile:"
+          echo "Cleaned Dockerfile preview:"
           head -n 30 docker_build/Dockerfile
 
-          echo "Building Docker image"
+          echo "Building Docker image..."
           cd docker_build
           docker build -t workflow-ci .
-          echo "Docker image build completed."
+
+          echo "Docker image built successfully."
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
@@ -109,12 +116,10 @@ jobs:
       - name: Tag Docker Image
         run: |
           docker tag workflow-ci ${{ secrets.DOCKER_HUB_USERNAME }}/workflow-ci:latest
-          echo "Docker image tagged as latest."
 
       - name: Push Docker Image
         run: |
           docker push ${{ secrets.DOCKER_HUB_USERNAME }}/workflow-ci:latest
-          echo "Docker image has successfully pushed in Docker Hub."
 
       - name: Complete job
-        run: echo "CI workflow Done"
+        run: echo "Workflow CI selesai dengan sukses."
