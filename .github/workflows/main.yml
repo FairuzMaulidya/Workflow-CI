@@ -48,32 +48,49 @@ jobs:
           echo "MLflow project completed."
           ls -R .
 
-      - name: Get latest MLflow run_id
+      # 🩷 Bagian ini diubah jadi aman (tidak error kalau pakai DagsHub)
+      - name: Get latest MLflow run_id (safe)
         run: |
-          RUN_ID=$(ls -td MLProject/mlruns/0/*/ | head -n 1 | cut -d'/' -f4)
-          echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
-          echo "Latest run_id: $RUN_ID"
+          if [ -d "MLProject/mlruns/0" ]; then
+            echo "Detected local mlruns folder."
+            RUN_ID=$(ls -td MLProject/mlruns/0/*/ | head -n 1 | cut -d'/' -f4)
+            echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
+            echo "Latest local run_id: $RUN_ID"
+          else
+            echo "No local mlruns found — skipping run ID extraction (DagsHub mode)."
+            echo "RUN_ID=REMOTE_RUN" >> $GITHUB_ENV
+          fi
 
       - name: Install Python dependencies
         run: |
           pip install gitpython
 
-      - name: Upload to GitHub LFS
+      # 🩷 Diperbaiki agar skip push kalau folder nggak ada
+      - name: Upload to GitHub LFS (safe)
         run: |
-          git config --global user.name ${{ secrets.username }}
-          git config --global user.email ${{ secrets.email }}
-          git lfs install
-          git add -f MLProject/mlruns/
-          git commit -m "Save mlruns from CI run" || true
-          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
-          git push origin main
-          echo "Upload to GitHub LFS selesai."
+          if [ -d "MLProject/mlruns" ]; then
+            git config --global user.name ${{ secrets.username }}
+            git config --global user.email ${{ secrets.email }}
+            git lfs install
+            git add -f MLProject/mlruns/
+            git commit -m "Save mlruns from CI run" || true
+            git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+            git push origin main
+            echo "Upload to GitHub LFS selesai."
+          else
+            echo "Tidak ada folder mlruns untuk diupload, skip langkah ini."
+          fi
 
-      - name: Build Docker Model
+      - name: Build Docker Model (safe)
         run: |
           cd MLProject
-          RUN_PATH=$(ls -td mlruns/0/*/ | grep -v datasets | head -n 1)
-          MODEL_PATH="$RUN_PATH/artifacts/model"
+          if [ -d "mlruns/0" ]; then
+            RUN_PATH=$(ls -td mlruns/0/*/ | grep -v datasets | head -n 1)
+            MODEL_PATH="$RUN_PATH/artifacts/model"
+          else
+            echo "No local mlruns found, assuming model logged to remote (DagsHub)."
+            MODEL_PATH="artifacts/model"
+          fi
 
           echo "Generating Dockerfile from MLflow model..."
           mlflow models generate-dockerfile \
