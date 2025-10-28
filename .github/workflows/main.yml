@@ -1,4 +1,4 @@
-name: CI_MLflow_Project
+name: CI_MLflow_DagsHub
 
 on:
   push:
@@ -29,16 +29,17 @@ jobs:
         with:
           python-version: "3.10"
 
-      - name: Check environment
-        run: |
-          echo "Python version:"
-          python --version
-          echo "MLflow tracking URI: $MLFLOW_TRACKING_URI"
-
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install mlflow==2.9.2 joblib scikit-learn pandas numpy matplotlib gitpython
+
+      - name: Ensure mlruns folder exists
+        run: |
+          mkdir -p MLProject/mlruns
+          touch MLProject/mlruns/.gitkeep
+          git add MLProject/mlruns/.gitkeep
+          git commit -m "Ensure mlruns folder exists for Git LFS" || echo "No changes to commit"
 
       - name: Run MLflow project
         run: |
@@ -46,34 +47,23 @@ jobs:
           echo "🏃 Running MLflow model training..."
           python modelling.py 100 10
           echo "✅ MLflow training completed."
-          echo "Contents of MLProject:"
-          ls -R .
 
-      - name: Get latest MLflow run_id
+      - name: Track MLflow artifacts with Git LFS
         run: |
-          RUN_ID=$(ls -td MLProject/mlruns/0/*/ | head -n 1 | cut -d'/' -f4)
-          echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
-          echo "Latest MLflow Run ID: $RUN_ID"
-
-      - name: Commit and push MLflow artifacts via Git LFS
-        run: |
-          echo "🪶 Setting up Git..."
-          git config --global user.name "${{ secrets.username }}"
-          git config --global user.email "${{ secrets.email }}"
           git lfs install
+          git lfs track "MLProject/mlruns/**"
+          git add .gitattributes
+          git add MLProject/mlruns/
+          git commit -m "Add MLflow run artifacts" || echo "No changes to commit"
 
-          echo "📦 Adding MLflow run artifacts to Git LFS..."
-          git add -f MLProject/mlruns/
-          git commit -m "Upload MLflow artifacts from CI" || echo "No changes to commit"
-
-          echo "🔐 Setting remote URL for push..."
-          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
-          
-          echo "🚀 Pushing MLflow artifacts to GitHub..."
+      - name: Push artifacts to DagsHub
+        run: |
+          git config --global user.name "${{ secrets.DAGSHUB_USERNAME }}"
+          git config --global user.email "${{ secrets.DAGSHUB_EMAIL }}"
+          git remote set-url origin https://${{ secrets.DAGSHUB_USERNAME }}:${{ secrets.DAGSHUB_TOKEN }}@dagshub.com/${{ github.repository }}.git
           git push origin main || echo "No changes pushed"
-          echo "✅ MLflow artifacts pushed successfully."
 
-      - name: Build Docker Model from MLflow artifacts
+      - name: Build Docker image from MLflow model
         run: |
           cd MLProject
           RUN_PATH=$(ls -td mlruns/0/*/ | grep -v datasets | head -n 1)
@@ -87,20 +77,14 @@ jobs:
 
           echo "🧩 Adjusting Dockerfile base image..."
           sed -i '1i FROM python:3.10-slim' docker_build/Dockerfile
-
-          echo "🧹 Cleaning up unnecessary dependencies..."
           sed -i '/openjdk/d' docker_build/Dockerfile
           sed -i '/maven/d' docker_build/Dockerfile
           sed -i '/mvn/d' docker_build/Dockerfile
           sed -i '/java/d' docker_build/Dockerfile
 
-          echo "🔍 Preview of Dockerfile:"
-          head -n 25 docker_build/Dockerfile
-
           echo "🏗️ Building Docker image..."
           cd docker_build
           docker build -t workflow-ci .
-          echo "✅ Docker image build completed."
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
@@ -108,15 +92,10 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
 
-      - name: Tag Docker Image
+      - name: Tag and Push Docker image
         run: |
           docker tag workflow-ci ${{ secrets.DOCKER_HUB_USERNAME }}/workflow-ci:latest
-          echo "🏷️ Docker image tagged as latest."
-
-      - name: Push Docker Image
-        run: |
           docker push ${{ secrets.DOCKER_HUB_USERNAME }}/workflow-ci:latest
-          echo "✅ Docker image successfully pushed to Docker Hub."
 
       - name: Complete job
         run: echo "🎉 CI workflow completed successfully."
