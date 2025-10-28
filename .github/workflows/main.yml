@@ -1,3 +1,5 @@
+name: CI_MLflow_Project
+
 on:
   push:
     branches: [ main ]
@@ -17,10 +19,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Set up job
-        run: echo "Starting CI job..."
-
-      - name: Run actions/checkout@v3
+      - name: Checkout repository with Git LFS
         uses: actions/checkout@v3
         with:
           lfs: true
@@ -30,97 +29,78 @@ jobs:
         with:
           python-version: "3.10"
 
-      - name: Check Env
+      - name: Check environment
         run: |
           echo "Python version:"
           python --version
-          echo "MLflow URI: $MLFLOW_TRACKING_URI"
+          echo "MLflow tracking URI: $MLFLOW_TRACKING_URI"
 
       - name: Install dependencies
         run: |
-          pip install --upgrade pip
-          pip install mlflow==2.9.2 joblib scikit-learn pandas numpy matplotlib
+          python -m pip install --upgrade pip
+          pip install mlflow==2.9.2 joblib scikit-learn pandas numpy matplotlib gitpython
 
-      - name: Run mlflow project
+      - name: Run MLflow project
         run: |
           cd MLProject
+          echo "🏃 Running MLflow model training..."
           python modelling.py 100 10
-          echo "MLflow project completed."
+          echo "✅ MLflow training completed."
+          echo "Contents of MLProject:"
           ls -R .
 
-      # 🩷 Bagian ini diubah jadi aman (tidak error kalau pakai DagsHub)
-      - name: Get latest MLflow run_id (safe)
+      - name: Get latest MLflow run_id
         run: |
-          if [ -d "MLProject/mlruns/0" ]; then
-            echo "Detected local mlruns folder."
-            RUN_ID=$(ls -td MLProject/mlruns/0/*/ | head -n 1 | cut -d'/' -f4)
-            echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
-            echo "Latest local run_id: $RUN_ID"
-          else
-            echo "No local mlruns found — skipping run ID extraction (DagsHub mode)."
-            echo "RUN_ID=REMOTE_RUN" >> $GITHUB_ENV
-          fi
+          RUN_ID=$(ls -td MLProject/mlruns/0/*/ | head -n 1 | cut -d'/' -f4)
+          echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
+          echo "Latest MLflow Run ID: $RUN_ID"
 
-      - name: Install Python dependencies
+      - name: Commit and push MLflow artifacts via Git LFS
         run: |
-          pip install gitpython
+          echo "🪶 Setting up Git..."
+          git config --global user.name "${{ secrets.username }}"
+          git config --global user.email "${{ secrets.email }}"
+          git lfs install
 
-      # 🩷 Diperbaiki agar skip push kalau folder nggak ada
-      - name: Upload to GitHub LFS (safe)
-        run: |
-          if [ -d "MLProject/mlruns" ]; then
-            git config --global user.name ${{ secrets.username }}
-            git config --global user.email ${{ secrets.email }}
-            git lfs install
-            git add -f MLProject/mlruns/
-            git commit -m "Save mlruns from CI run" || true
-            git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
-            git push origin main
-            echo "Upload to GitHub LFS selesai."
-          else
-            echo "Tidak ada folder mlruns untuk diupload, skip langkah ini."
-          fi
+          echo "📦 Adding MLflow run artifacts to Git LFS..."
+          git add -f MLProject/mlruns/
+          git commit -m "Upload MLflow artifacts from CI" || echo "No changes to commit"
 
-      - name: Build Docker Model (safe)
+          echo "🔐 Setting remote URL for push..."
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+          
+          echo "🚀 Pushing MLflow artifacts to GitHub..."
+          git push origin main || echo "No changes pushed"
+          echo "✅ MLflow artifacts pushed successfully."
+
+      - name: Build Docker Model from MLflow artifacts
         run: |
           cd MLProject
-          if [ -d "mlruns/0" ]; then
-            RUN_PATH=$(ls -td mlruns/0/*/ | grep -v datasets | head -n 1)
-            MODEL_PATH="$RUN_PATH/artifacts/model"
-          else
-            echo "No local mlruns found, assuming model logged to remote (DagsHub)."
-            MODEL_PATH="artifacts/model"
-          fi
+          RUN_PATH=$(ls -td mlruns/0/*/ | grep -v datasets | head -n 1)
+          MODEL_PATH="$RUN_PATH/artifacts/model"
 
-          echo "Generating Dockerfile from MLflow model..."
+          echo "⚙️ Generating Dockerfile from MLflow model..."
           mlflow models generate-dockerfile \
             --model-uri "$MODEL_PATH" \
             --output-directory docker_build \
             --env-manager local
 
-          echo "Add base image manually..."
+          echo "🧩 Adjusting Dockerfile base image..."
           sed -i '1i FROM python:3.10-slim' docker_build/Dockerfile
 
-          echo "Fix get-pip.py URL for Python 3.8..."
-          sed -i 's|https://bootstrap.pypa.io/get-pip.py|https://bootstrap.pypa.io/pip/3.8/get-pip.py|g' docker_build/Dockerfile
-
-          echo "Inject git and distutils install commands..."
-          sed -i '/RUN git clone/i RUN apt-get update && apt-get install -y git python3-distutils && rm -rf /var/lib/apt/lists/*' docker_build/Dockerfile
-
-          echo "Remove Java and Maven sections..."
+          echo "🧹 Cleaning up unnecessary dependencies..."
           sed -i '/openjdk/d' docker_build/Dockerfile
           sed -i '/maven/d' docker_build/Dockerfile
           sed -i '/mvn/d' docker_build/Dockerfile
           sed -i '/java/d' docker_build/Dockerfile
 
-          echo "Cleaned Dockerfile preview:"
-          head -n 30 docker_build/Dockerfile
+          echo "🔍 Preview of Dockerfile:"
+          head -n 25 docker_build/Dockerfile
 
-          echo "Building Docker image..."
+          echo "🏗️ Building Docker image..."
           cd docker_build
           docker build -t workflow-ci .
-
-          echo "Docker image built successfully."
+          echo "✅ Docker image build completed."
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
@@ -131,10 +111,12 @@ jobs:
       - name: Tag Docker Image
         run: |
           docker tag workflow-ci ${{ secrets.DOCKER_HUB_USERNAME }}/workflow-ci:latest
+          echo "🏷️ Docker image tagged as latest."
 
       - name: Push Docker Image
         run: |
           docker push ${{ secrets.DOCKER_HUB_USERNAME }}/workflow-ci:latest
+          echo "✅ Docker image successfully pushed to Docker Hub."
 
       - name: Complete job
-        run: echo "Workflow CI selesai dengan sukses."
+        run: echo "🎉 CI workflow completed successfully."
