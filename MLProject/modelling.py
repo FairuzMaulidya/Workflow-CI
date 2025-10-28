@@ -15,12 +15,6 @@ if __name__ == "__main__":
     warnings.filterwarnings("ignore")
     np.random.seed(42)
 
-    # Men-setting MLFlow dengan DagsHub
-    os.environ["MLFLOW_TRACKING_USERNAME"] = "fairuzmdy86"
-    os.environ["MLFLOW_TRACKING_PASSWORD"] = "3f313239a1e79b5134e9b7642cbdc989ae9afe15"
-    mlflow.set_tracking_uri("https://dagshub.com/fairuzmdy86/student-performance.mlflow")
-    mlflow.set_experiment("Students Performance Classification after Tuning")
-
     # Load file yang sudah di preprocessing
     base_dir = os.path.dirname(os.path.abspath(__file__))
     database_path = os.path.join(base_dir, "StudentsPerformance_preprocessing.joblib")
