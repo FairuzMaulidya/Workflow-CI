@@ -1,0 +1,11 @@
+digest: '69484721'
+name: dataset
+profile: '{"num_rows": 200, "num_elements": 1600}'
+schema: '{"mlflow_colspec": [{"type": "long", "name": "gender"}, {"type": "long",
+  "name": "race/ethnicity"}, {"type": "long", "name": "parental level of education"},
+  {"type": "long", "name": "lunch"}, {"type": "long", "name": "test preparation course"},
+  {"type": "double", "name": "math score"}, {"type": "double", "name": "reading score"},
+  {"type": "double", "name": "writing score"}]}'
+source: '{"tags": {"mlflow.user": "fairuzmdy86", "mlflow.source.name": "modelling.py",
+  "mlflow.source.type": "LOCAL"}}'
+source_type: code
