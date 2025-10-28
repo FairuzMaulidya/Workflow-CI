@@ -43,12 +43,28 @@ jobs:
 
       - name: Get latest MLflow run_id
         run: |
+          # Cek apakah ada folder lokal mlruns
           if [ -d "MLProject/mlruns/0" ]; then
             RUN_ID=$(ls -td MLProject/mlruns/0/*/ | head -n 1 | cut -d'/' -f4)
             echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
             echo "Latest run_id: $RUN_ID"
           else
-            echo "No MLflow run found. Skipping RUN_ID export."
+            # Kalau tidak ada, export placeholder
+            echo "RUN_ID=" >> $GITHUB_ENV
+            echo "No local MLflow run found."
+          fi
+
+      - name: Download MLflow model artifact
+        run: |
+          cd MLProject
+          if [ -n "$RUN_ID" ]; then
+            echo "Downloading MLflow model artifact for run $RUN_ID..."
+            mlflow artifacts download \
+              --run-id $RUN_ID \
+              --artifact-path model \
+              -d mlruns/0/$RUN_ID/artifacts/model
+          else
+            echo "No RUN_ID available, skipping artifact download."
           fi
 
       - name: Upload MLflow runs to GitHub LFS
@@ -72,23 +88,28 @@ jobs:
       - name: Build Docker Image
         run: |
           cd MLProject
-          RUN_PATH=$(ls -td mlruns/0/*/ | grep -v datasets | head -n 1)
-          MODEL_PATH="$RUN_PATH/artifacts/model"
+          # Gunakan folder lokal mlruns/0/<run_id> sebagai path model
+          if [ -n "$RUN_ID" ]; then
+            MODEL_PATH="mlruns/0/$RUN_ID/artifacts/model"
 
-          mlflow models generate-dockerfile \
-            --model-uri "$MODEL_PATH" \
-            --output-directory docker_build \
-            --env-manager local
+            echo "Generating Dockerfile from local MLflow model..."
+            mlflow models generate-dockerfile \
+              --model-uri "$MODEL_PATH" \
+              --output-directory docker_build \
+              --env-manager local
 
-          sed -i '1i FROM python:3.10-slim' docker_build/Dockerfile
-          sed -i '/RUN git clone/i RUN apt-get update && apt-get install -y git python3-distutils && rm -rf /var/lib/apt/lists/*' docker_build/Dockerfile
-          sed -i '/openjdk/d' docker_build/Dockerfile
-          sed -i '/maven/d' docker_build/Dockerfile
-          sed -i '/mvn/d' docker_build/Dockerfile
-          sed -i '/java/d' docker_build/Dockerfile
+            sed -i '1i FROM python:3.10-slim' docker_build/Dockerfile
+            sed -i '/RUN git clone/i RUN apt-get update && apt-get install -y git python3-distutils && rm -rf /var/lib/apt/lists/*' docker_build/Dockerfile
+            sed -i '/openjdk/d' docker_build/Dockerfile
+            sed -i '/maven/d' docker_build/Dockerfile
+            sed -i '/mvn/d' docker_build/Dockerfile
+            sed -i '/java/d' docker_build/Dockerfile
 
-          cd docker_build
-          docker build -t workflow-ci .
+            cd docker_build
+            docker build -t workflow-ci .
+          else
+            echo "No MLflow model artifact available. Skipping Docker build."
+          fi
 
       - name: Docker Login
         uses: docker/login-action@v2
