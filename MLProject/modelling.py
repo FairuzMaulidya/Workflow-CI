@@ -35,6 +35,7 @@ if __name__ == "__main__":
     # Menjalankan MLflow manual logging
     for n_estimators in n_est:
         for max_depth in max_dep:
+            mlflow.set_tracking_uri("file://" + os.path.join(base_dir, "mlruns"))
             with mlflow.start_run():
                 start_time = time.time()
 
