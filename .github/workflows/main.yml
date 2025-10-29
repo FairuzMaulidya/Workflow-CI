@@ -20,7 +20,7 @@ jobs:
 
     steps:
       - name: Set up job
-        run: echo "Starting CI job..."
+        run: echo "Set Up Job"
 
       - name: Checkout code
         uses: actions/checkout@v3
@@ -34,7 +34,6 @@ jobs:
 
       - name: Check Environment
         run: |
-          echo "Python version:"
           python --version
           echo "MLflow URI: $MLFLOW_TRACKING_URI"
 
@@ -47,7 +46,6 @@ jobs:
         run: |
           cd MLProject
           python modelling.py 100 10
-          echo "MLflow project completed."
 
       - name: Get latest MLflow run_id
         run: |
@@ -61,46 +59,31 @@ jobs:
           git config --global user.email "${{ secrets.email }}"
           git lfs install
           git add -f MLProject/mlruns/
-          git commit -m "Save mlruns from CI run" || true
+          git commit -m "Upload mlruns to Github LFS" 
           git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
           git push origin main
-          echo "Upload to GitHub LFS selesai."
 
-      - name: Build Docker Image from MLflow model
+      - name: Build Docker Image
         run: |
           cd MLProject
           RUN_PATH=$(ls -td mlruns/0/*/ | grep -v datasets | head -n 1)
           MODEL_PATH="$RUN_PATH/artifacts/model"
-
-          echo "Generating Dockerfile from MLflow model..."
+          
           mlflow models generate-dockerfile \
             --model-uri "$MODEL_PATH" \
             --output-directory docker_build \
             --env-manager local
 
-          echo "Add base image manually..."
           sed -i '1i FROM python:3.10-slim' docker_build/Dockerfile
-
-          echo "Fix get-pip.py URL for Python 3.8..."
           sed -i 's|https://bootstrap.pypa.io/get-pip.py|https://bootstrap.pypa.io/pip/3.8/get-pip.py|g' docker_build/Dockerfile
-
-          echo "Inject git and distutils install commands..."
           sed -i '/RUN git clone/i RUN apt-get update && apt-get install -y git python3-distutils && rm -rf /var/lib/apt/lists/*' docker_build/Dockerfile
-
-          echo "Remove Java and Maven sections..."
           sed -i '/openjdk/d' docker_build/Dockerfile
           sed -i '/maven/d' docker_build/Dockerfile
           sed -i '/mvn/d' docker_build/Dockerfile
           sed -i '/java/d' docker_build/Dockerfile
-
-          echo "Cleaned Dockerfile preview:"
           head -n 30 docker_build/Dockerfile
-
-          echo "Building Docker image..."
           cd docker_build
           docker build -t workflow-ci .
-
-          echo "Docker image built successfully."
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
@@ -117,4 +100,4 @@ jobs:
           docker push ${{ secrets.DOCKER_HUB_USERNAME }}/workflow-ci:latest
 
       - name: Complete job
-        run: echo "Workflow CI selesai dengan sukses."
+        run: echo "DONE"
