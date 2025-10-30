@@ -1,0 +1,15 @@
+artifact_uri: file:///home/runner/work/Workflow-CI/Workflow-CI/MLProject/mlruns/0/89ccdbb058514d888ef08460ccd37fcd/artifacts
+end_time: 1761806760756
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: active
+run_id: 89ccdbb058514d888ef08460ccd37fcd
+run_name: redolent-sloth-547
+run_uuid: 89ccdbb058514d888ef08460ccd37fcd
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1761806758777
+status: 3
+tags: []
+user_id: fairuzmdy86

@@ -1,0 +1,15 @@
+artifact_uri: file:///home/runner/work/Workflow-CI/Workflow-CI/MLProject/mlruns/0/a907f642dea24f4abd94fd818532ed5e/artifacts
+end_time: 1761806775472
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: active
+run_id: a907f642dea24f4abd94fd818532ed5e
+run_name: abrasive-rat-284
+run_uuid: a907f642dea24f4abd94fd818532ed5e
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1761806773190
+status: 3
+tags: []
+user_id: fairuzmdy86
