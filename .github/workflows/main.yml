@@ -76,7 +76,7 @@ jobs:
 
           sed -i '1i FROM python:3.10-slim' docker_build/Dockerfile
           sed -i 's|https://bootstrap.pypa.io/get-pip.py|https://bootstrap.pypa.io/pip/3.8/get-pip.py|g' docker_build/Dockerfile
-          sed -i '/RUN git clone/i RUN apt-get update && apt-get install -y git python3-distutils && rm -rf /var/lib/apt/lists/*' docker_build/Dockerfile
+          sed -i '/RUN git clone/i RUN apt-get update && apt-get install -y git python3-distutils nginx && rm -rf /var/lib/apt/lists/*' docker_build/Dockerfile
           sed -i '/openjdk/d' docker_build/Dockerfile
           sed -i '/maven/d' docker_build/Dockerfile
           sed -i '/mvn/d' docker_build/Dockerfile
