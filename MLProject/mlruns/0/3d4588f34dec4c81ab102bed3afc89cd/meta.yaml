@@ -1,0 +1,15 @@
+artifact_uri: file:///home/runner/work/Workflow-CI/Workflow-CI/MLProject/mlruns/0/3d4588f34dec4c81ab102bed3afc89cd/artifacts
+end_time: 1761914337331
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: active
+run_id: 3d4588f34dec4c81ab102bed3afc89cd
+run_name: righteous-dog-986
+run_uuid: 3d4588f34dec4c81ab102bed3afc89cd
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1761914335537
+status: 3
+tags: []
+user_id: fairuzmdy86
