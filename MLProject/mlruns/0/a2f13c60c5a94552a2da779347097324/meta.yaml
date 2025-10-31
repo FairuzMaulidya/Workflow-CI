@@ -1,0 +1,15 @@
+artifact_uri: file:///home/runner/work/Workflow-CI/Workflow-CI/MLProject/mlruns/0/a2f13c60c5a94552a2da779347097324/artifacts
+end_time: 1761913492569
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: active
+run_id: a2f13c60c5a94552a2da779347097324
+run_name: honorable-panda-140
+run_uuid: a2f13c60c5a94552a2da779347097324
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1761913490675
+status: 3
+tags: []
+user_id: fairuzmdy86
