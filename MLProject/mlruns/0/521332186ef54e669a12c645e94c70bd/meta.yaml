@@ -1,0 +1,15 @@
+artifact_uri: file:///home/runner/work/Workflow-CI/Workflow-CI/MLProject/mlruns/0/521332186ef54e669a12c645e94c70bd/artifacts
+end_time: 1761913847261
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: active
+run_id: 521332186ef54e669a12c645e94c70bd
+run_name: carefree-loon-659
+run_uuid: 521332186ef54e669a12c645e94c70bd
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1761913845234
+status: 3
+tags: []
+user_id: fairuzmdy86

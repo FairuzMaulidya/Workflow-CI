@@ -1,0 +1,15 @@
+artifact_uri: file:///home/runner/work/Workflow-CI/Workflow-CI/MLProject/mlruns/0/eb9d3e3d9adc4187b80aa40b72e82f56/artifacts
+end_time: 1761913841446
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: active
+run_id: eb9d3e3d9adc4187b80aa40b72e82f56
+run_name: clean-tern-558
+run_uuid: eb9d3e3d9adc4187b80aa40b72e82f56
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1761913838642
+status: 3
+tags: []
+user_id: fairuzmdy86
