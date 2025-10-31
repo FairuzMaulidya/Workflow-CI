@@ -68,14 +68,20 @@ jobs:
           cd MLProject
           RUN_PATH=$(ls -td mlruns/0/*/ | grep -v datasets | head -n 1)
           MODEL_PATH="$RUN_PATH/artifacts/model"
-          
+
+          # Copy model ke docker_build supaya Docker bisa build
+          mkdir -p docker_build/model
+          cp -r "$MODEL_PATH"/* docker_build/model/
+
           mlflow models generate-dockerfile \
             --model-uri "$MODEL_PATH" \
             --output-directory docker_build \
             --env-manager local
-          
-          echo "COPY $MODEL_PATH /app/mlruns/0/$RUN_ID/artifacts/model" >> docker_build/Dockerfile
-          
+
+          # Ganti COPY path ke model yang sudah dicopy
+          sed -i '/COPY.*model/d' docker_build/Dockerfile
+          echo "COPY model /opt/ml/model" >> docker_build/Dockerfile
+
           sed -i '1i FROM python:3.10-slim' docker_build/Dockerfile
           sed -i 's|https://bootstrap.pypa.io/get-pip.py|https://bootstrap.pypa.io/pip/3.8/get-pip.py|g' docker_build/Dockerfile
           sed -i '/RUN git clone/i RUN apt-get update && apt-get install -y git python3-distutils nginx && rm -rf /var/lib/apt/lists/*' docker_build/Dockerfile
@@ -83,7 +89,7 @@ jobs:
           sed -i '/maven/d' docker_build/Dockerfile
           sed -i '/mvn/d' docker_build/Dockerfile
           sed -i '/java/d' docker_build/Dockerfile
-          head -n 30 docker_build/Dockerfile
+
           cd docker_build
           docker build -t workflow-ci .
 
