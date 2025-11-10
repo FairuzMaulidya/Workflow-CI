@@ -36,17 +36,17 @@ if __name__ == "__main__":
     mlflow.set_tracking_uri("file://" + os.path.join(base_dir, "mlruns"))
     mlflow.set_experiment("Student Performance Classification")
 
+    # Pastikan ada run aktif untuk manual python execution
+    if mlflow.active_run() is None:
+        run_context = mlflow.start_run()
+        close_run = True
+    else:
+        run_context = mlflow.active_run()
+        close_run = False
+
     # Menjalankan MLflow manual logging
     for n_estimators in n_est:
         for max_depth in max_dep:
-            # Ambil run aktif jika ada, atau buat run baru
-            active_run = mlflow.active_run()
-            if active_run is None:
-                run_context = mlflow.start_run()
-                close_run = True
-            else:
-                run_context = active_run
-                close_run = False
 
             start_time = time.time()
 
@@ -169,9 +169,9 @@ if __name__ == "__main__":
                 best_accuracy = accuracy
                 best_params = {"n_estimators": n_estimators, "max_depth": max_depth}
 
-            # Tutup run baru jika dibuat
-            if close_run:
-                mlflow.end_run()
+    # Tutup run manual jika dibuat
+    if close_run:
+        mlflow.end_run()
 
     print(f"\nModel terbaik: {best_params}")
     print(f"Akurasi terbaik: {best_accuracy:.4f}")
