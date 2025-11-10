@@ -32,18 +32,11 @@ if __name__ == "__main__":
     best_accuracy = 0
     best_params = {}
 
-    # Pastikan direktori mlruns dibuat
-    mlruns_dir = os.path.join(base_dir, "mlruns")
-    os.makedirs(mlruns_dir, exist_ok=True)
-
-    # Setting MLflow Tracking URI
-    mlflow.set_tracking_uri("file://" + mlruns_dir)
     mlflow.set_experiment("Student Performance Classification")
 
     # Menjalankan MLflow manual logging
     for n_estimators in n_est:
         for max_depth in max_dep:
-            # Gunakan with context dan pastikan run aktif dibuat baru tiap loop
             with mlflow.start_run(run_name=f"n{n_estimators}_d{max_depth}", nested=False):
                 start_time = time.time()
 
