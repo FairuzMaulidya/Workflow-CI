@@ -1,4 +1,4 @@
-# Mengimport Library
+# Mengimport Library 
 import os
 import time
 import json
@@ -36,13 +36,10 @@ if __name__ == "__main__":
     mlflow.set_tracking_uri("file://" + os.path.join(base_dir, "mlruns"))
     mlflow.set_experiment("Student Performance Classification")
 
-    # Mulai run jika tidak ada active run (manual execution)
-    manual_run = False
-    if mlflow.active_run() is None:
-        run_context = mlflow.start_run()
-        manual_run = True
+    # --- HAPUS MANUAL START_RUN ---
+    # mlflow akan otomatis membuat run saat dijalankan via 'mlflow run'
 
-    # Menjalankan MLflow manual logging
+    # Menjalankan MLflow logging
     for n_estimators in n_est:
         for max_depth in max_dep:
 
@@ -166,10 +163,6 @@ if __name__ == "__main__":
             if accuracy > best_accuracy:
                 best_accuracy = accuracy
                 best_params = {"n_estimators": n_estimators, "max_depth": max_depth}
-
-    # Tutup run manual jika dibuat
-    if manual_run:
-        mlflow.end_run()
 
     print(f"\nModel terbaik: {best_params}")
     print(f"Akurasi terbaik: {best_accuracy:.4f}")
