@@ -36,7 +36,7 @@ if __name__ == "__main__":
     for n_estimators in n_est:
         for max_depth in max_dep:
             mlflow.set_tracking_uri("file://" + os.path.join(base_dir, "mlruns"))
-            with mlflow.start_run():
+            with mlflow.start_run(nested=True):
                 start_time = time.time()
 
                 # Train model dengan Random Forest
