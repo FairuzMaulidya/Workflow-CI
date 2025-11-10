@@ -36,13 +36,11 @@ if __name__ == "__main__":
     mlflow.set_tracking_uri("file://" + os.path.join(base_dir, "mlruns"))
     mlflow.set_experiment("Student Performance Classification")
 
-    # Pastikan ada run aktif untuk manual python execution
+    # Mulai run jika tidak ada active run (manual execution)
+    manual_run = False
     if mlflow.active_run() is None:
         run_context = mlflow.start_run()
-        close_run = True
-    else:
-        run_context = mlflow.active_run()
-        close_run = False
+        manual_run = True
 
     # Menjalankan MLflow manual logging
     for n_estimators in n_est:
@@ -170,7 +168,7 @@ if __name__ == "__main__":
                 best_params = {"n_estimators": n_estimators, "max_depth": max_depth}
 
     # Tutup run manual jika dibuat
-    if close_run:
+    if manual_run:
         mlflow.end_run()
 
     print(f"\nModel terbaik: {best_params}")
