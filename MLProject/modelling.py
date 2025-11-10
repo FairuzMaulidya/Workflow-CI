@@ -37,7 +37,7 @@ if __name__ == "__main__":
     # Menjalankan MLflow manual logging
     for n_estimators in n_est:
         for max_depth in max_dep:
-            with mlflow.start_run(run_name=f"n{n_estimators}_d{max_depth}", nested=False):
+            with mlflow.start_run(run_name=f"n{n_estimators}_d{max_depth}", nested=True):
                 start_time = time.time()
 
                 # Train model dengan Random Forest
