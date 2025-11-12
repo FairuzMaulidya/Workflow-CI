@@ -1,0 +1,15 @@
+artifact_uri: file:///home/runner/work/Workflow-CI/Workflow-CI/MLProject/mlruns/823149371750906296/fe0e8593313f4810ba7a30748cdfc58f/artifacts
+end_time: 1762948154618
+entry_point_name: ''
+experiment_id: '823149371750906296'
+lifecycle_stage: active
+run_id: fe0e8593313f4810ba7a30748cdfc58f
+run_name: adaptable-bee-711
+run_uuid: fe0e8593313f4810ba7a30748cdfc58f
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1762948149731
+status: 3
+tags: []
+user_id: runner
