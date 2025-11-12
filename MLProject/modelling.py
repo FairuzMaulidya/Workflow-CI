@@ -54,7 +54,7 @@ if __name__ == "__main__":
     # === Jalankan loop — setiap kombinasi jadi run terpisah ===
     for n_estimators in n_est:
         for max_depth in max_dep:
-            with mlflow.start_run(run_name=f"RF_{n_estimators}_{max_depth}", nested=True):
+            with mlflow.start_run(run_name=f"RF_{n_estimators}_{max_depth}"):
                 start_time = time.time()
 
                 model = RandomForestClassifier(
