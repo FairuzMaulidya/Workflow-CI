@@ -38,15 +38,17 @@ if __name__ == "__main__":
     best_params = {}
 
     # Setup MLflow tracking lokal
-    tracking_dir = os.path.join(base_dir, "mlruns")
-    os.makedirs(tracking_dir, exist_ok=True)
-    mlflow.set_tracking_uri(f"file://{tracking_dir}")
-    mlflow.set_experiment("Student Performance Classification")
+tracking_dir = os.path.join(base_dir, "mlruns")
+os.makedirs(tracking_dir, exist_ok=True)
+mlflow.set_tracking_uri(f"file://{tracking_dir}")
+mlflow.set_experiment("Student Performance Classification")
 
-    # Jalankan loop model
+# Jalankan loop model di dalam satu parent run
+with mlflow.start_run(run_name="Main_Run"):
     for n_estimators in n_est:
         for max_depth in max_dep:
-            with mlflow.start_run(nested=True):
+            # Jangan pakai nested di CI, biar ga bentrok
+            with mlflow.start_run(run_name=f"Model_{n_estimators}_{max_depth}", nested=True):
                 start_time = time.time()
 
                 model = RandomForestClassifier(
@@ -133,5 +135,5 @@ if __name__ == "__main__":
                     best_accuracy = accuracy
                     best_params = {"n_estimators": n_estimators, "max_depth": max_depth}
 
-    print(f"\n Model terbaik: {best_params}")
-    print(f"Akurasi terbaik: {best_accuracy:.4f}")
+print(f"\n Model terbaik: {best_params}")
+print(f"Akurasi terbaik: {best_accuracy:.4f}")
