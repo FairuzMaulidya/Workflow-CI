@@ -36,7 +36,7 @@ if __name__ == "__main__":
     mlflow.set_experiment("Student Performance Classification")
 
     # 🔹 Tambahkan satu run utama agar tidak error saat dijalankan dari mlflow run
-    with mlflow.start_run(run_name="Main_Run"):
+    with mlflow.start_run(run_name="Main_Run", nested=True):
         # Menjalankan MLflow manual logging
         for n_estimators in n_est:
             for max_depth in max_dep:
