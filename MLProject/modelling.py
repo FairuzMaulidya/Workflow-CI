@@ -22,12 +22,10 @@ if __name__ == "__main__":
     np.random.seed(42)
 
     # === Ambil parameter dari CLI ===
-    # Format: python modelling.py n_estimators max_depth dataset_path
     n_estimators = int(sys.argv[1]) if len(sys.argv) > 1 else 100
     max_depth = int(sys.argv[2]) if len(sys.argv) > 2 else 10
     dataset = sys.argv[3] if len(sys.argv) > 3 else "StudentsPerformance_preprocessing.joblib"
 
-    # === Path dasar proyek ===
     base_dir = os.path.dirname(os.path.abspath(__file__))
     data_path = os.path.join(base_dir, dataset)
 
@@ -39,99 +37,114 @@ if __name__ == "__main__":
     X_train, X_test = data["X_train"], data["X_test"]
     y_train, y_test = data["y_train"], data["y_test"]
 
-    # === Setup MLflow lokal atau DagsHub ===
+    # === Setup MLflow tracking ===
     tracking_dir = os.path.join(base_dir, "mlruns")
     os.makedirs(tracking_dir, exist_ok=True)
     mlflow.set_tracking_uri(f"file://{tracking_dir}")
 
-    # Gunakan nama unik agar CI/CD tidak konflik
-    experiment_name = f"Student Performance Classification {int(time.time())}"
+    experiment_name = "Student Performance Classification"
     mlflow.set_experiment(experiment_name)
 
-    with mlflow.start_run(run_name=f"RF_{n_estimators}_{max_depth}"):
-        start_time = time.time()
+    # ✅ FIX: Gunakan active run jika sudah ada (misal dari mlflow run)
+    active_run = mlflow.active_run()
 
-        # === Training model ===
-        model = RandomForestClassifier(
-            n_estimators=n_estimators,
-            max_depth=max_depth,
-            random_state=42
-        )
-        model.fit(X_train, y_train)
-        training_time = time.time() - start_time
+    if active_run is None:
+        # Kalau dijalankan manual (python modelling.py)
+        run_context = mlflow.start_run(run_name=f"RF_{n_estimators}_{max_depth}")
+    else:
+        # Kalau dijalankan lewat mlflow run → jangan bikin run baru
+        run_context = active_run
 
-        y_pred = model.predict(X_test)
-        y_proba = model.predict_proba(X_test)
+    # Jalankan log di dalam konteks
+    if isinstance(run_context, mlflow.ActiveRun):
+        # sudah aktif, langsung logging
+        run = run_context
+    else:
+        # baru dibuat, pakai with agar otomatis close
+        with run_context:
+            run = run_context
 
-        # === Hitung metrik ===
-        accuracy = accuracy_score(y_test, y_pred)
-        precision = precision_score(y_test, y_pred, average="weighted", zero_division=0)
-        recall = recall_score(y_test, y_pred, average="weighted", zero_division=0)
-        f1 = f1_score(y_test, y_pred, average="weighted", zero_division=0)
-        logloss = log_loss(y_test, y_proba)
-        bal_acc = balanced_accuracy_score(y_test, y_pred)
+    start_time = time.time()
 
-        # === Log parameter & metrik ===
-        mlflow.log_params({
-            "n_estimators": n_estimators,
-            "max_depth": max_depth,
-            "random_state": 42
-        })
-        mlflow.log_metrics({
-            "accuracy": accuracy,
-            "precision": precision,
-            "recall": recall,
-            "f1_score": f1,
-            "training_time": training_time,
-            "log_loss": logloss,
-            "balanced_accuracy": bal_acc
-        })
+    # === Training ===
+    model = RandomForestClassifier(
+        n_estimators=n_estimators,
+        max_depth=max_depth,
+        random_state=42
+    )
+    model.fit(X_train, y_train)
+    training_time = time.time() - start_time
 
-        # === Folder model output ===
-        model_dir = os.path.join(base_dir, "model")
-        os.makedirs(model_dir, exist_ok=True)
+    y_pred = model.predict(X_test)
+    y_proba = model.predict_proba(X_test)
 
-        # Confusion Matrix
-        cmatrix = ConfusionMatrixDisplay.from_estimator(model, X_test, y_test)
-        plt.title("Training Confusion Matrix")
-        cmatrix_path = os.path.join(model_dir, f"cmatrix_{n_estimators}_{max_depth}.png")
-        plt.savefig(cmatrix_path)
-        mlflow.log_artifact(cmatrix_path)
+    # === Metrics ===
+    accuracy = accuracy_score(y_test, y_pred)
+    precision = precision_score(y_test, y_pred, average="weighted", zero_division=0)
+    recall = recall_score(y_test, y_pred, average="weighted", zero_division=0)
+    f1 = f1_score(y_test, y_pred, average="weighted", zero_division=0)
+    logloss = log_loss(y_test, y_proba)
+    bal_acc = balanced_accuracy_score(y_test, y_pred)
+
+    # === Log params & metrics ===
+    mlflow.log_params({
+        "n_estimators": n_estimators,
+        "max_depth": max_depth,
+        "random_state": 42
+    })
+    mlflow.log_metrics({
+        "accuracy": accuracy,
+        "precision": precision,
+        "recall": recall,
+        "f1_score": f1,
+        "training_time": training_time,
+        "log_loss": logloss,
+        "balanced_accuracy": bal_acc
+    })
+
+    # === Artifacts ===
+    model_dir = os.path.join(base_dir, "model")
+    os.makedirs(model_dir, exist_ok=True)
+
+    cmatrix = ConfusionMatrixDisplay.from_estimator(model, X_test, y_test)
+    plt.title("Training Confusion Matrix")
+    cmatrix_path = os.path.join(model_dir, f"cmatrix_{n_estimators}_{max_depth}.png")
+    plt.savefig(cmatrix_path)
+    mlflow.log_artifact(cmatrix_path)
+    plt.close()
+
+    if len(model.classes_) > 1:
+        fpr, tpr, _ = roc_curve(y_test, y_proba[:, 1], pos_label=model.classes_[1])
+        roc_auc = auc(fpr, tpr)
+        plt.plot(fpr, tpr, label=f"ROC curve (AUC = {roc_auc:.2f})")
+        plt.xlabel("False Positive Rate")
+        plt.ylabel("True Positive Rate")
+        plt.title("Training ROC Curve")
+        plt.legend(loc="lower right")
+        roc_png = os.path.join(model_dir, f"roc_{n_estimators}_{max_depth}.png")
+        plt.savefig(roc_png)
+        mlflow.log_artifact(roc_png)
         plt.close()
 
-        # ROC Curve (jika ada 2 kelas)
-        if len(model.classes_) > 1:
-            fpr, tpr, _ = roc_curve(y_test, y_proba[:, 1], pos_label=model.classes_[1])
-            roc_auc = auc(fpr, tpr)
-            plt.plot(fpr, tpr, label=f"ROC curve (AUC = {roc_auc:.2f})")
-            plt.xlabel("False Positive Rate")
-            plt.ylabel("True Positive Rate")
-            plt.title("Training ROC Curve")
-            plt.legend(loc="lower right")
-            roc_png = os.path.join(model_dir, f"roc_{n_estimators}_{max_depth}.png")
-            plt.savefig(roc_png)
-            mlflow.log_artifact(roc_png)
-            plt.close()
+    # Save metric JSON
+    metric_info = {
+        "accuracy": accuracy,
+        "precision": precision,
+        "recall": recall,
+        "f1_score": f1,
+        "training_time": training_time,
+        "log_loss": logloss,
+        "balanced_accuracy": bal_acc
+    }
+    metric_path = os.path.join(model_dir, f"metric_{n_estimators}_{max_depth}.json")
+    with open(metric_path, "w") as f:
+        json.dump(metric_info, f, indent=4)
+    mlflow.log_artifact(metric_path)
 
-        # Simpan metrik ke file JSON
-        metric_info = {
-            "accuracy": accuracy,
-            "precision": precision,
-            "recall": recall,
-            "f1_score": f1,
-            "training_time": training_time,
-            "log_loss": logloss,
-            "balanced_accuracy": bal_acc
-        }
-        metric_path = os.path.join(model_dir, f"metric_{n_estimators}_{max_depth}.json")
-        with open(metric_path, "w") as f:
-            json.dump(metric_info, f, indent=4)
-        mlflow.log_artifact(metric_path)
+    mlflow.sklearn.log_model(model, artifact_path=f"model_{n_estimators}_{max_depth}")
 
-        # Log model ke MLflow
-        mlflow.sklearn.log_model(model, artifact_path=f"model_{n_estimators}_{max_depth}")
+    print(f"✅ Training selesai — n_estimators={n_estimators}, max_depth={max_depth}")
+    print(f"   Akurasi: {accuracy:.4f}")
 
-        print(f"✅ Training selesai — n_estimators={n_estimators}, max_depth={max_depth}")
-        print(f"   Akurasi: {accuracy:.4f}")
-
-    print("\n🎯 Training run selesai — Experiment:", experiment_name)
+    if isinstance(run_context, mlflow.ActiveRun):
+        mlflow.end_run()
