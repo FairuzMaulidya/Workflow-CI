@@ -41,9 +41,11 @@ jobs:
           pip install --upgrade pip
           pip install mlflow==2.9.2 joblib scikit-learn pandas numpy matplotlib gitpython
       - name: Run MLflow project
+          working-directory: MLProject
         run: |
-          cd MLProject
           mlflow run . -P n_estimators=100 -P max_depth=10 --env-manager=local
+        env:
+          MLFLOW_TRACKING_URI: file:./mlruns
       - name: Get latest MLflow run_id
         run: |
           RUN_ID=$(ls -td MLProject/mlruns/0/*/ | head -n 1 | cut -d'/' -f4)
