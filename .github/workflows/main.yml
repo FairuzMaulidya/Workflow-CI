@@ -74,6 +74,11 @@ jobs:
           cd MLProject
           RUN_PATH=$(ls -td mlruns/0/*/ | grep -v datasets | head -n 1)
           MODEL_PATH="$RUN_PATH/artifacts/model"
+
+          if [ ! -d "$MODEL_PATH" ]; then
+            echo "Model path not found in MLflow run, fallback to local artifacts..."
+            MODEL_PATH="artifacts/model"
+          fi
           
           mlflow models generate-dockerfile \
             --model-uri "$MODEL_PATH" \
