@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import os
 import sys
 import time
@@ -13,18 +12,14 @@ from sklearn.metrics import (
     ConfusionMatrixDisplay, log_loss, balanced_accuracy_score,
     roc_curve, auc, precision_recall_curve
 )
-from sklearn.preprocessing import label_binarize
 import mlflow
 import mlflow.sklearn
-
-def safe_mkdir(path):
-    os.makedirs(path, exist_ok=True)
 
 if __name__ == "__main__":
     warnings.filterwarnings("ignore")
     np.random.seed(42)
 
-    # --- Arguments ---
+    # === Ambil parameter dari CLI ===
     n_estimators = int(sys.argv[1]) if len(sys.argv) > 1 else 100
     max_depth = int(sys.argv[2]) if len(sys.argv) > 2 else 10
     dataset = sys.argv[3] if len(sys.argv) > 3 else "StudentsPerformance_preprocessing.joblib"
@@ -33,7 +28,7 @@ if __name__ == "__main__":
     data_path = os.path.join(base_dir, dataset)
 
     if not os.path.exists(data_path):
-        raise FileNotFoundError(f"Dataset not found: {data_path}")
+        raise FileNotFoundError(f"Dataset tidak ditemukan: {data_path}")
 
     # === Load dataset ===
     data = load(data_path)
@@ -41,31 +36,18 @@ if __name__ == "__main__":
     y_train, y_test = data["y_train"], data["y_test"]
 
     # === Setup MLflow tracking ===
-    # Prefer env var MLFLOW_TRACKING_URI (CI may set it). If not set, use local mlruns folder.
-    mlflow_uri = os.getenv("MLFLOW_TRACKING_URI")
-    if mlflow_uri:
-        # if env var like "file:mlruns" -> convert to file:// absolute location if relative
-        if mlflow_uri.startswith("file:") and not mlflow_uri.startswith("file://"):
-            # e.g. file:mlruns -> file://<abs_path>/mlruns
-            rel = mlflow_uri.split("file:", 1)[1]
-            rel = rel if rel else "mlruns"
-            abs_path = os.path.abspath(os.path.join(base_dir, rel))
-            mlflow.set_tracking_uri(f"file://{abs_path}")
-        else:
-            mlflow.set_tracking_uri(mlflow_uri)
-    else:
-        tracking_dir = os.path.join(base_dir, "mlruns")
-        safe_mkdir(tracking_dir)
-        mlflow.set_tracking_uri(f"file://{tracking_dir}")
+    tracking_dir = os.path.join(base_dir, "mlruns")
+    os.makedirs(tracking_dir, exist_ok=True)
+    mlflow.set_tracking_uri(f"file://{tracking_dir}")
 
     experiment_name = "Student Performance Classification"
     mlflow.set_experiment(experiment_name)
 
-    # Use a run context (start a run; nested runs are allowed when invoked by mlflow run)
+    # === Mulai run MLflow ===
     with mlflow.start_run(run_name=f"RF_{n_estimators}_{max_depth}") as run:
         start_time = time.time()
 
-        # === Training ===
+        # === Training model ===
         model = RandomForestClassifier(
             n_estimators=n_estimators,
             max_depth=max_depth,
@@ -74,145 +56,117 @@ if __name__ == "__main__":
         model.fit(X_train, y_train)
         training_time = time.time() - start_time
 
+        # === Evaluasi model ===
         y_pred = model.predict(X_test)
         y_proba = model.predict_proba(X_test)
 
-        # === Metrics ===
         accuracy = accuracy_score(y_test, y_pred)
-        precision = precision_score(y_test, y_pred, average="weighted", zero_division=0)
-        recall = recall_score(y_test, y_pred, average="weighted", zero_division=0)
-        f1 = f1_score(y_test, y_pred, average="weighted", zero_division=0)
+        precision = precision_score(y_test, y_pred, average='weighted', zero_division=0)
+        recall = recall_score(y_test, y_pred, average='weighted', zero_division=0)
+        f1 = f1_score(y_test, y_pred, average='weighted', zero_division=0)
         try:
             logloss = log_loss(y_test, y_proba)
         except Exception:
             logloss = float("nan")
         bal_acc = balanced_accuracy_score(y_test, y_pred)
 
-        # Log params & metrics
+        # === Logging parameter dan metrik ===
         mlflow.log_param("n_estimators", n_estimators)
         mlflow.log_param("max_depth", max_depth)
         mlflow.log_param("random_state", 42)
 
-        mlflow.log_metric("accuracy", float(accuracy))
-        mlflow.log_metric("precision", float(precision))
-        mlflow.log_metric("recall", float(recall))
-        mlflow.log_metric("f1_score", float(f1))
-        mlflow.log_metric("training_time", float(training_time))
-        mlflow.log_metric("log_loss", float(logloss) if not np.isnan(logloss) else -1.0)
-        mlflow.log_metric("balanced_accuracy", float(bal_acc))
+        mlflow.log_metric("accuracy", accuracy)
+        mlflow.log_metric("precision", precision)
+        mlflow.log_metric("recall", recall)
+        mlflow.log_metric("f1_score", f1)
+        mlflow.log_metric("training_time", training_time)
+        mlflow.log_metric("log_loss", logloss)
+        mlflow.log_metric("balanced_accuracy", bal_acc)
 
-        # === Artifacts: save plots into artifacts/model and log them ===
-        artifact_root = os.path.join(base_dir, "artifacts")
-        model_artifact_dir = os.path.join(artifact_root, "model")  # IMPORTANT: artifact path must be "model"
-        safe_mkdir(model_artifact_dir)
+        # === Folder artifact ===
+        artifact_dir = os.path.join(base_dir, "artifacts", "model")
+        os.makedirs(artifact_dir, exist_ok=True)
 
-        # Confusion matrix
+        # === Confusion Matrix ===
         disp = ConfusionMatrixDisplay.from_estimator(model, X_test, y_test)
         plt.title("Confusion Matrix")
-        cm_path = os.path.join(model_artifact_dir, f"confusion_matrix_{n_estimators}_{max_depth}.png")
-        plt.savefig(cm_path)
+        cmatrix_path = os.path.join(artifact_dir, "confusion_matrix.png")
+        plt.savefig(cmatrix_path)
+        mlflow.log_artifact(cmatrix_path, artifact_path="model")
         plt.close()
-        mlflow.log_artifact(cm_path, artifact_path="model")
 
-        # Log Loss bar
-        plt.figure()
+        # === Log Loss ===
         plt.bar(["Log Loss"], [logloss if not np.isnan(logloss) else 0])
         plt.title("Log Loss")
-        logloss_png = os.path.join(model_artifact_dir, "log_loss_plot.png")
+        logloss_png = os.path.join(artifact_dir, "log_loss_plot.png")
         plt.savefig(logloss_png)
-        plt.close()
         mlflow.log_artifact(logloss_png, artifact_path="model")
+        plt.close()
 
-        # Balanced Accuracy bar
-        plt.figure()
+        # === Balanced Accuracy ===
         plt.bar(["Balanced Acc"], [bal_acc])
         plt.title("Balanced Accuracy")
-        balacc_png = os.path.join(model_artifact_dir, "balanced_accuracy_plot.png")
+        balacc_png = os.path.join(artifact_dir, "balanced_accuracy_plot.png")
         plt.savefig(balacc_png)
-        plt.close()
         mlflow.log_artifact(balacc_png, artifact_path="model")
+        plt.close()
 
-        # ROC & Precision-Recall: handle binary and multiclass safely
+        # === ROC Curve (binary) ===
         try:
-            n_classes = y_proba.shape[1]
-            if n_classes == 2:
-                # binary
+            if y_proba.shape[1] == 2:
                 fpr, tpr, _ = roc_curve(y_test, y_proba[:, 1], pos_label=model.classes_[1])
                 roc_auc = auc(fpr, tpr)
-                plt.figure()
-                plt.plot(fpr, tpr, label=f"ROC curve (AUC = {roc_auc:.2f})")
+                plt.plot(fpr, tpr, label=f"AUC = {roc_auc:.2f}")
                 plt.xlabel("False Positive Rate")
                 plt.ylabel("True Positive Rate")
                 plt.title("ROC Curve")
                 plt.legend(loc="lower right")
-                roc_png = os.path.join(model_artifact_dir, "roc_curve.png")
+                roc_png = os.path.join(artifact_dir, "roc_curve.png")
                 plt.savefig(roc_png)
-                plt.close()
                 mlflow.log_artifact(roc_png, artifact_path="model")
+                plt.close()
+        except Exception as e:
+            print("ROC curve skipped:", e)
 
-                # PR curve
+        # === Precision-Recall Curve (binary) ===
+        try:
+            if y_proba.shape[1] == 2:
+                from sklearn.metrics import precision_recall_curve
                 precision_curve, recall_curve, _ = precision_recall_curve(y_test, y_proba[:, 1], pos_label=model.classes_[1])
-                plt.figure()
                 plt.plot(recall_curve, precision_curve)
                 plt.xlabel("Recall")
                 plt.ylabel("Precision")
                 plt.title("Precision-Recall Curve")
-                pr_png = os.path.join(model_artifact_dir, "precision_recall_curve.png")
+                pr_png = os.path.join(artifact_dir, "precision_recall_curve.png")
                 plt.savefig(pr_png)
-                plt.close()
                 mlflow.log_artifact(pr_png, artifact_path="model")
-            else:
-                # multiclass: compute micro-average ROC
-                y_test_bin = label_binarize(y_test, classes=model.classes_)
-                # handle shapes
-                if y_test_bin.shape[1] == y_proba.shape[1]:
-                    fpr = dict()
-                    tpr = dict()
-                    roc_auc = dict()
-                    for i in range(y_proba.shape[1]):
-                        fpr[i], tpr[i], _ = roc_curve(y_test_bin[:, i], y_proba[:, i])
-                        roc_auc[i] = auc(fpr[i], tpr[i])
-                    # micro
-                    fpr_micro, tpr_micro, _ = roc_curve(y_test_bin.ravel(), y_proba.ravel())
-                    roc_auc_micro = auc(fpr_micro, tpr_micro)
-                    plt.figure()
-                    plt.plot(fpr_micro, tpr_micro, label=f"ROC curve (micro) AUC = {roc_auc_micro:.2f}")
-                    plt.xlabel("False Positive Rate")
-                    plt.ylabel("True Positive Rate")
-                    plt.title("ROC Curve (micro-average)")
-                    plt.legend(loc="lower right")
-                    roc_png = os.path.join(model_artifact_dir, "roc_curve_micro.png")
-                    plt.savefig(roc_png)
-                    plt.close()
-                    mlflow.log_artifact(roc_png, artifact_path="model")
-                # skip PR for multiclass to keep simple
+                plt.close()
         except Exception as e:
-            print("Warning: ROC/PR plotting skipped due to:", e)
+            print("PR curve skipped:", e)
 
-        # metric_info.json
+        # === Simpan metrik ke JSON ===
         metric_info = {
-            "accuracy": float(accuracy),
-            "precision": float(precision),
-            "recall": float(recall),
-            "f1_score": float(f1),
-            "training_time": float(training_time),
-            "log_loss": float(logloss) if not np.isnan(logloss) else None,
-            "balanced_accuracy": float(bal_acc)
+            "accuracy": accuracy,
+            "precision": precision,
+            "recall": recall,
+            "f1_score": f1,
+            "training_time": training_time,
+            "log_loss": logloss,
+            "balanced_accuracy": bal_acc
         }
-        metric_path = os.path.join(model_artifact_dir, "metric_info.json")
+        metric_path = os.path.join(artifact_dir, "metric_info.json")
         with open(metric_path, "w") as f:
             json.dump(metric_info, f, indent=4)
         mlflow.log_artifact(metric_path, artifact_path="model")
 
-        # estimator.html
-        estimator_html = os.path.join(model_artifact_dir, "estimator.html")
+        # === HTML estimator ===
+        estimator_html = os.path.join(artifact_dir, "estimator.html")
         with open(estimator_html, "w") as f:
-            f.write(f"<h2>RandomForestClassifier</h2><p>n_estimators={n_estimators}, max_depth={max_depth}, random_state=42</p>")
+            f.write(f"<h2>RandomForestClassifier</h2><p>n_estimators={n_estimators}, max_depth={max_depth}</p>")
         mlflow.log_artifact(estimator_html, artifact_path="model")
 
-        # === LOG MODEL ===
-        # IMPORTANT: artifact_path must be "model" so downstream steps can find artifacts/model/MLmodel
-        mlflow.sklearn.log_model(sk_model=model, artifact_path="model")
+        # === Simpan model ===
+        mlflow.sklearn.log_model(model, artifact_path="model")
 
         print(f"✅ Training selesai — n_estimators={n_estimators}, max_depth={max_depth}")
         print(f"   Akurasi: {accuracy:.4f}")
