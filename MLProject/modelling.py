@@ -83,18 +83,17 @@ if __name__ == "__main__":
         })
 
         # === Simpan artifacts ===
-        model_dir = os.path.join(base_dir, "artifacts", "model")
-        os.makedirs(model_dir, exist_ok=True)
+        # === Artifacts ===
+        artifacts_dir = os.path.join(base_dir, "artifacts", "model")
+        os.makedirs(artifacts_dir, exist_ok=True)
 
-        # Confusion Matrix
         cmatrix = ConfusionMatrixDisplay.from_estimator(model, X_test, y_test)
         plt.title("Training Confusion Matrix")
-        cmatrix_path = os.path.join(model_dir, "cmatrix.png")
+        cmatrix_path = os.path.join(artifacts_dir, f"cmatrix_{n_estimators}_{max_depth}.png")
         plt.savefig(cmatrix_path)
         mlflow.log_artifact(cmatrix_path)
         plt.close()
 
-        # ROC Curve (kalau applicable)
         if len(model.classes_) > 1:
             fpr, tpr, _ = roc_curve(y_test, y_proba[:, 1], pos_label=model.classes_[1])
             roc_auc = auc(fpr, tpr)
@@ -103,12 +102,11 @@ if __name__ == "__main__":
             plt.ylabel("True Positive Rate")
             plt.title("Training ROC Curve")
             plt.legend(loc="lower right")
-            roc_png = os.path.join(model_dir, "roc.png")
+            roc_png = os.path.join(artifacts_dir, f"roc_{n_estimators}_{max_depth}.png")
             plt.savefig(roc_png)
             mlflow.log_artifact(roc_png)
             plt.close()
 
-        # Save metrics JSON
         metric_info = {
             "accuracy": accuracy,
             "precision": precision,
@@ -118,13 +116,14 @@ if __name__ == "__main__":
             "log_loss": logloss,
             "balanced_accuracy": bal_acc
         }
-        metric_path = os.path.join(model_dir, "metrics.json")
+        metric_path = os.path.join(artifacts_dir, f"metric_{n_estimators}_{max_depth}.json")
         with open(metric_path, "w") as f:
             json.dump(metric_info, f, indent=4)
         mlflow.log_artifact(metric_path)
 
-        # Log model
+        # ✅ Simpan model ke artifacts/model agar sesuai dengan workflow
         mlflow.sklearn.log_model(model, artifact_path="model")
+        mlflow.sklearn.save_model(model, artifacts_dir)
 
         print(f"✅ Training selesai — n_estimators={n_estimators}, max_depth={max_depth}")
         print(f"   Akurasi: {accuracy:.4f}")
