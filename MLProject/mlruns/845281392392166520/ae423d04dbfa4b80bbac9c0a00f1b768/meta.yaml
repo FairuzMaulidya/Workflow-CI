@@ -1,0 +1,15 @@
+artifact_uri: file:///home/runner/work/Workflow-CI/Workflow-CI/MLProject/mlruns/845281392392166520/ae423d04dbfa4b80bbac9c0a00f1b768/artifacts
+end_time: 1763004635751
+entry_point_name: ''
+experiment_id: '845281392392166520'
+lifecycle_stage: active
+run_id: ae423d04dbfa4b80bbac9c0a00f1b768
+run_name: adventurous-quail-13
+run_uuid: ae423d04dbfa4b80bbac9c0a00f1b768
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1763004630426
+status: 3
+tags: []
+user_id: runner
