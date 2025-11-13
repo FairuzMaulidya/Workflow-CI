@@ -1,0 +1,15 @@
+artifact_uri: file:///home/runner/work/Workflow-CI/Workflow-CI/MLProject/mlruns/283356477786968814/33e4ffea705a4a52acfb5005988470cd/artifacts
+end_time: 1763008045388
+entry_point_name: ''
+experiment_id: '283356477786968814'
+lifecycle_stage: active
+run_id: 33e4ffea705a4a52acfb5005988470cd
+run_name: lyrical-penguin-225
+run_uuid: 33e4ffea705a4a52acfb5005988470cd
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1763008039735
+status: 3
+tags: []
+user_id: runner
