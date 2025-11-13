@@ -50,16 +50,15 @@ jobs:
             -P n_estimators=100 \
             -P max_depth=10 \
             --env-manager=local
-          --experiment-name "Student Performance Classification" \
-          -P n_estimators=100 \
-          -P max_depth=10 \
-          --env-manager=local
         env:
           MLFLOW_TRACKING_URI: file:mlruns
 
       - name: Get latest MLflow run_id
         run: |
-          RUN_ID=$(ls -td MLProject/mlruns/0/*/ | head -n 1 | cut -d'/' -f4)
+          RUN_ID=$(ls -td MLProject/mlruns/0/*/ 2>/dev/null | head -n 1 | cut -d'/' -f4)
+          if [ -z "$RUN_ID" ]; then
+            RUN_ID=$(ls -td mlruns/0/*/ | head -n 1 | cut -d'/' -f3)
+          fi
           echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
           echo "Latest run_id: $RUN_ID"
 
@@ -68,17 +67,18 @@ jobs:
           git config --global user.name "${{ secrets.username }}"
           git config --global user.email "${{ secrets.email }}"
           git lfs install
-          git add -f MLProject/mlruns/
-          git commit -m "Upload mlruns to Github LFS" 
+          git add -f MLProject/mlruns/ || true
+          git add -f mlruns/ || true
+          git commit -m "Upload mlruns to Github LFS" || echo "No changes to commit"
           git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
           git push origin main
 
       - name: Build Docker Image
         run: |
-          cd MLProject
+          cd MLProject || cd .
           RUN_PATH=$(ls -td mlruns/0/*/ | grep -v datasets | head -n 1)
           MODEL_PATH="$RUN_PATH/artifacts/model"
-          
+
           mlflow models generate-dockerfile \
             --model-uri "$MODEL_PATH" \
             --output-directory docker_build \
