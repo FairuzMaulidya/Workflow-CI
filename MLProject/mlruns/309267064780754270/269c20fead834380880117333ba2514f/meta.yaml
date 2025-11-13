@@ -1,0 +1,15 @@
+artifact_uri: file:///home/runner/work/Workflow-CI/Workflow-CI/MLProject/mlruns/309267064780754270/269c20fead834380880117333ba2514f/artifacts
+end_time: 1763005165361
+entry_point_name: ''
+experiment_id: '309267064780754270'
+lifecycle_stage: active
+run_id: 269c20fead834380880117333ba2514f
+run_name: worried-stag-248
+run_uuid: 269c20fead834380880117333ba2514f
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1763005159468
+status: 3
+tags: []
+user_id: runner
