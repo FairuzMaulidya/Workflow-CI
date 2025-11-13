@@ -75,14 +75,22 @@ jobs:
 
       - name: Build Docker Image
         run: |
-          cd MLProject || cd .
-          RUN_PATH=$(ls -td mlruns/0/*/ | grep -v datasets | head -n 1)
+          if [ -d "MLProject/mlruns" ]; then
+            cd MLProject
+            RUN_PATH=$(ls -td mlruns/0/*/ | grep -v datasets | head -n 1)
+          elif [ -d "mlruns" ]; then
+            RUN_PATH=$(ls -td mlruns/0/*/ | grep -v datasets | head -n 1)
+          else
+            exit 1
+          fi
+
           MODEL_PATH="$RUN_PATH/artifacts/model"
 
           mlflow models generate-dockerfile \
             --model-uri "$MODEL_PATH" \
             --output-directory docker_build \
             --env-manager local
+
           sed -i '1i FROM python:3.10-slim' docker_build/Dockerfile
           sed -i 's|https://bootstrap.pypa.io/get-pip.py|https://bootstrap.pypa.io/pip/3.8/get-pip.py|g' docker_build/Dockerfile
           sed -i '/RUN git clone/i RUN apt-get update && apt-get install -y git python3-distutils nginx && rm -rf /var/lib/apt/lists/*' docker_build/Dockerfile
