@@ -1,0 +1,15 @@
+artifact_uri: file:///home/runner/work/Workflow-CI/Workflow-CI/MLProject/mlruns/464305824411750830/16a8b85552494533bb136a0d52927e47/artifacts
+end_time: 1763007311394
+entry_point_name: ''
+experiment_id: '464305824411750830'
+lifecycle_stage: active
+run_id: 16a8b85552494533bb136a0d52927e47
+run_name: carefree-smelt-744
+run_uuid: 16a8b85552494533bb136a0d52927e47
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1763007306481
+status: 3
+tags: []
+user_id: runner
