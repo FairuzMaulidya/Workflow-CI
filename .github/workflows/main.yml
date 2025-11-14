@@ -27,7 +27,8 @@ jobs:
         with:
           lfs: true
 
-      - name: Pull LFS Files
+      # FIX: WAJIB untuk download isi LFS (mlruns)
+      - name: Pull LFS files
         run: |
           git lfs install
           git lfs pull
@@ -56,7 +57,7 @@ jobs:
             -P max_depth=10 \
             --env-manager=local
         env:
-          MLFOW_TRACKING_URI: file:mlruns
+          MLFLOW_TRACKING_URI: file:mlruns
 
       - name: Get latest MLflow run_id
         run: |
@@ -80,14 +81,15 @@ jobs:
 
       - name: Build Docker Image
         run: |
+          # FIX: Cek mlruns dari Git LFS
           if [ ! -d "mlruns" ]; then
-            echo "ERROR: Folder mlruns tidak ditemukan setelah checkout + lfs pull!"
+            echo "ERROR: Folder mlruns tidak ditemukan setelah checkout dan git lfs pull."
             exit 1
           fi
 
           RUN_PATH=$(find mlruns -type d -path "mlruns/*/*" -not -path "*/artifacts*" | sort -r | head -n 1)
-
           echo "Detected RUN_PATH: $RUN_PATH"
+
           MODEL_PATH="$RUN_PATH/artifacts/model"
           echo "MODEL_PATH: $MODEL_PATH"
 
@@ -108,8 +110,8 @@ jobs:
           sed -i '/maven/d' docker_build/Dockerfile
           sed -i '/mvn/d' docker_build/Dockerfile
           sed -i '/java/d' docker_build/Dockerfile
-
           head -n 30 docker_build/Dockerfile
+
           cd docker_build
           docker build -t workflow-ci .
 
