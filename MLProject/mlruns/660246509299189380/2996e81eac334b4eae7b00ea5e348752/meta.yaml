@@ -1,0 +1,15 @@
+artifact_uri: file:///home/runner/work/Workflow-CI/Workflow-CI/MLProject/mlruns/660246509299189380/2996e81eac334b4eae7b00ea5e348752/artifacts
+end_time: 1763084662458
+entry_point_name: ''
+experiment_id: '660246509299189380'
+lifecycle_stage: active
+run_id: 2996e81eac334b4eae7b00ea5e348752
+run_name: abrasive-ox-674
+run_uuid: 2996e81eac334b4eae7b00ea5e348752
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1763084656167
+status: 3
+tags: []
+user_id: runner
