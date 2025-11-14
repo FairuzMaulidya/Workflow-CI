@@ -27,12 +27,6 @@ jobs:
         with:
           lfs: true
 
-      # FIX: WAJIB untuk download isi LFS (mlruns)
-      - name: Pull LFS files
-        run: |
-          git lfs install
-          git lfs pull
-
       - name: Set up Python 3.10
         uses: actions/setup-python@v4
         with:
@@ -61,12 +55,10 @@ jobs:
 
       - name: Get latest MLflow run_id
         run: |
-          RUN_ID=$(ls -td MLProject/mlruns/*/*/ 2>/dev/null | head -n 1 | awk -F'/' '{print $(NF-1)}')
-          if [ -z "$RUN_ID" ]; then
-            RUN_ID=$(ls -td mlruns/*/*/ | head -n 1 | awk -F'/' '{print $(NF-1)}')
-          fi
-          echo "RUN_ID=$RUN_ID" >> $GITHUB_ENV
-          echo "Latest run_id: $RUN_ID"
+          # Ambil folder run terbaru dua level (exp_id/run_id)
+          RUN_PATH=$(ls -td MLProject/mlruns/*/*/*/ 2>/dev/null | head -n 1)
+          echo "RUN_PATH=$RUN_PATH" >> $GITHUB_ENV
+          echo "Latest run path: $RUN_PATH"
 
       - name: Upload mlruns to GitHub LFS
         run: |
@@ -81,20 +73,16 @@ jobs:
 
       - name: Build Docker Image
         run: |
-          # FIX: Cek mlruns dari Git LFS
-          if [ ! -d "mlruns" ]; then
-            echo "ERROR: Folder mlruns tidak ditemukan setelah checkout dan git lfs pull."
-            exit 1
-          fi
+          cd MLProject || cd .
 
-          RUN_PATH=$(find mlruns -type d -path "mlruns/*/*" -not -path "*/artifacts*" | sort -r | head -n 1)
-          echo "Detected RUN_PATH: $RUN_PATH"
+          # Gunakan path yang sudah disimpan di env
+          echo "Using RUN_PATH: $RUN_PATH"
 
           MODEL_PATH="$RUN_PATH/artifacts/model"
           echo "MODEL_PATH: $MODEL_PATH"
 
-          if [ ! -f "$MODEL_PATH/MLmodel" ]; then
-            echo "ERROR: MLmodel tidak ditemukan pada $MODEL_PATH"
+          if [ ! -d "$MODEL_PATH" ]; then
+            echo "Model folder not found at: $MODEL_PATH"
             exit 1
           fi
 
@@ -111,7 +99,6 @@ jobs:
           sed -i '/mvn/d' docker_build/Dockerfile
           sed -i '/java/d' docker_build/Dockerfile
           head -n 30 docker_build/Dockerfile
-
           cd docker_build
           docker build -t workflow-ci .
 
