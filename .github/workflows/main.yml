@@ -75,13 +75,21 @@ jobs:
 
       - name: Build Docker Image
         run: |
-          cd MLProject || cd .
-          # Cari folder run terbaru (dengan struktur mlruns/<exp_id>/<run_id>/)
-          RUN_PATH=$(find mlruns -type d -path "mlruns/*/*" -not -path "*/artifacts*" -print | sort -r | head -n 1)
+          if [ -d "mlruns" ]; then
+            RUN_PATH=$(find mlruns -type d -path "mlruns/*/*" -not -path "*/artifacts*" | sort -r | head -n 1)
+          else
+            exit 1
+          fi
+
           echo "Detected RUN_PATH: $RUN_PATH"
 
           MODEL_PATH="$RUN_PATH/artifacts/model"
           echo "MODEL_PATH: $MODEL_PATH"
+
+          if [ ! -f "$MODEL_PATH/MLmodel" ]; then
+            echo "ERROR: MLmodel tidak ditemukan pada $MODEL_PATH"
+            exit 1
+          fi
 
           mlflow models generate-dockerfile \
             --model-uri "$MODEL_PATH" \
@@ -95,7 +103,9 @@ jobs:
           sed -i '/maven/d' docker_build/Dockerfile
           sed -i '/mvn/d' docker_build/Dockerfile
           sed -i '/java/d' docker_build/Dockerfile
+
           head -n 30 docker_build/Dockerfile
+
           cd docker_build
           docker build -t workflow-ci .
 
