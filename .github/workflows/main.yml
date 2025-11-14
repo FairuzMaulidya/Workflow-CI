@@ -27,6 +27,11 @@ jobs:
         with:
           lfs: true
 
+      - name: Pull LFS Files
+        run: |
+          git lfs install
+          git lfs pull
+
       - name: Set up Python 3.10
         uses: actions/setup-python@v4
         with:
@@ -51,7 +56,7 @@ jobs:
             -P max_depth=10 \
             --env-manager=local
         env:
-          MLFLOW_TRACKING_URI: file:mlruns
+          MLFOW_TRACKING_URI: file:mlruns
 
       - name: Get latest MLflow run_id
         run: |
@@ -75,14 +80,14 @@ jobs:
 
       - name: Build Docker Image
         run: |
-          if [ -d "mlruns" ]; then
-            RUN_PATH=$(find mlruns -type d -path "mlruns/*/*" -not -path "*/artifacts*" | sort -r | head -n 1)
-          else
+          if [ ! -d "mlruns" ]; then
+            echo "ERROR: Folder mlruns tidak ditemukan setelah checkout + lfs pull!"
             exit 1
           fi
 
-          echo "Detected RUN_PATH: $RUN_PATH"
+          RUN_PATH=$(find mlruns -type d -path "mlruns/*/*" -not -path "*/artifacts*" | sort -r | head -n 1)
 
+          echo "Detected RUN_PATH: $RUN_PATH"
           MODEL_PATH="$RUN_PATH/artifacts/model"
           echo "MODEL_PATH: $MODEL_PATH"
 
@@ -105,7 +110,6 @@ jobs:
           sed -i '/java/d' docker_build/Dockerfile
 
           head -n 30 docker_build/Dockerfile
-
           cd docker_build
           docker build -t workflow-ci .
 
