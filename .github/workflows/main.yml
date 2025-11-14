@@ -55,8 +55,7 @@ jobs:
 
       - name: Get latest MLflow run_id
         run: |
-          # Ambil folder run terbaru dua level (exp_id/run_id)
-          RUN_PATH=$(ls -td MLProject/mlruns/*/*/*/ 2>/dev/null | head -n 1)
+          RUN_PATH=$(ls -td MLProject/mlruns/*/*/ 2>/dev/null | head -n 1)
           echo "RUN_PATH=$RUN_PATH" >> $GITHUB_ENV
           echo "Latest run path: $RUN_PATH"
 
