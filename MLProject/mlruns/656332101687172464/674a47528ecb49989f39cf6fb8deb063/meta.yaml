@@ -1,0 +1,15 @@
+artifact_uri: file:///home/runner/work/Workflow-CI/Workflow-CI/MLProject/mlruns/656332101687172464/674a47528ecb49989f39cf6fb8deb063/artifacts
+end_time: 1763085372076
+entry_point_name: ''
+experiment_id: '656332101687172464'
+lifecycle_stage: active
+run_id: 674a47528ecb49989f39cf6fb8deb063
+run_name: nimble-cub-967
+run_uuid: 674a47528ecb49989f39cf6fb8deb063
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1763085365343
+status: 3
+tags: []
+user_id: runner
