@@ -1,0 +1,15 @@
+artifact_uri: file:///home/runner/work/Workflow-CI/Workflow-CI/MLProject/mlruns/521466572019998122/dc090d2bdd224915a9eab38006fcade6/artifacts
+end_time: 1763176003574
+entry_point_name: ''
+experiment_id: '521466572019998122'
+lifecycle_stage: active
+run_id: dc090d2bdd224915a9eab38006fcade6
+run_name: unruly-colt-259
+run_uuid: dc090d2bdd224915a9eab38006fcade6
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1763175997217
+status: 3
+tags: []
+user_id: runner
