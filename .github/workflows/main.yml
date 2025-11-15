@@ -66,22 +66,16 @@ jobs:
           git lfs install
           git add -f MLProject/mlruns/ || true
           git add -f mlruns/ || true
-          git commit -m "Upload mlruns to Github LFS" || echo "No changes to commit"
+          git commit -m "Upload mlruns to Github LFS" 
           git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
           git push origin main
 
       - name: Build Docker Image
         run: |
           cd MLProject || cd .
-
-          echo "Using RUN_PATH: $RUN_PATH"
-
-          # FIX: hilangkan MLProject/ karena sekarang sudah berada di MLProject/
           RUN_PATH=${RUN_PATH#MLProject/}
 
           MODEL_PATH="$RUN_PATH/artifacts/model"
-          echo "MODEL_PATH: $MODEL_PATH"
-
           if [ ! -d "$MODEL_PATH" ]; then
             echo "Model folder not found at: $MODEL_PATH"
             exit 1
