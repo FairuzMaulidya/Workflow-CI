@@ -1,3 +1,4 @@
+# Mengimport Library
 import os
 import sys
 import time
@@ -7,11 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from joblib import load
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import (
-    accuracy_score, precision_score, recall_score, f1_score,
-    ConfusionMatrixDisplay, log_loss, balanced_accuracy_score,
-    roc_curve, auc, precision_recall_curve
-)
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score,ConfusionMatrixDisplay, log_loss, balanced_accuracy_score,roc_curve, auc, precision_recall_curve
 import mlflow
 import mlflow.sklearn
 
@@ -19,35 +16,29 @@ if __name__ == "__main__":
     warnings.filterwarnings("ignore")
     np.random.seed(42)
 
-    # === Ambil parameter dari CLI ===
+    # Load file yang sudah di preprocessing
     n_estimators = int(sys.argv[1]) if len(sys.argv) > 1 else 100
     max_depth = int(sys.argv[2]) if len(sys.argv) > 2 else 10
     dataset = sys.argv[3] if len(sys.argv) > 3 else "StudentsPerformance_preprocessing.joblib"
-
     base_dir = os.path.dirname(os.path.abspath(__file__))
     data_path = os.path.join(base_dir, dataset)
-
-    if not os.path.exists(data_path):
-        raise FileNotFoundError(f"Dataset tidak ditemukan: {data_path}")
-
-    # === Load dataset ===
     data = load(data_path)
     X_train, X_test = data["X_train"], data["X_test"]
     y_train, y_test = data["y_train"], data["y_test"]
 
-    # === Setup MLflow tracking ===
+    # Melakukan setup terhadap MLFlow Tracking
     tracking_dir = os.path.join(base_dir, "mlruns")
     os.makedirs(tracking_dir, exist_ok=True)
     mlflow.set_tracking_uri(f"file://{tracking_dir}")
 
-    experiment_name = "Student Performance Classification"
-    mlflow.set_experiment(experiment_name)
+    exp_name = "Student Performance Classification"
+    mlflow.set_experiment(exp_name)
 
-    # === Mulai run MLflow ===
+    # Menjalankan MLflow manual logging
     with mlflow.start_run(run_name=f"RF_{n_estimators}_{max_depth}") as run:
         start_time = time.time()
 
-        # === Training model ===
+        # Train model dengan Random Forest
         model = RandomForestClassifier(
             n_estimators=n_estimators,
             max_depth=max_depth,
@@ -56,7 +47,7 @@ if __name__ == "__main__":
         model.fit(X_train, y_train)
         training_time = time.time() - start_time
 
-        # === Evaluasi model ===
+        # Melakukan evaluasi model
         y_pred = model.predict(X_test)
         y_proba = model.predict_proba(X_test)
 
@@ -64,13 +55,10 @@ if __name__ == "__main__":
         precision = precision_score(y_test, y_pred, average='weighted', zero_division=0)
         recall = recall_score(y_test, y_pred, average='weighted', zero_division=0)
         f1 = f1_score(y_test, y_pred, average='weighted', zero_division=0)
-        try:
-            logloss = log_loss(y_test, y_proba)
-        except Exception:
-            logloss = float("nan")
+        logloss = log_loss(y_test, y_proba)
         bal_acc = balanced_accuracy_score(y_test, y_pred)
 
-        # === Logging parameter dan metrik ===
+        # Menyimpan logging parameter dan metrik
         mlflow.log_param("n_estimators", n_estimators)
         mlflow.log_param("max_depth", max_depth)
         mlflow.log_param("random_state", 42)
@@ -83,11 +71,11 @@ if __name__ == "__main__":
         mlflow.log_metric("log_loss", logloss)
         mlflow.log_metric("balanced_accuracy", bal_acc)
 
-        # === Folder artifact ===
+        # Buat folder untuk menyimpan artifact dan model
         artifact_dir = os.path.join(base_dir, "artifacts", "model")
         os.makedirs(artifact_dir, exist_ok=True)
 
-        # === Confusion Matrix ===
+        # Confusion Matrix 
         disp = ConfusionMatrixDisplay.from_estimator(model, X_test, y_test)
         plt.title("Confusion Matrix")
         cmatrix_path = os.path.join(artifact_dir, "confusion_matrix.png")
@@ -95,7 +83,7 @@ if __name__ == "__main__":
         mlflow.log_artifact(cmatrix_path, artifact_path="model")
         plt.close()
 
-        # === Log Loss ===
+        # Log Loss Plot
         plt.bar(["Log Loss"], [logloss if not np.isnan(logloss) else 0])
         plt.title("Log Loss")
         logloss_png = os.path.join(artifact_dir, "log_loss_plot.png")
@@ -103,7 +91,7 @@ if __name__ == "__main__":
         mlflow.log_artifact(logloss_png, artifact_path="model")
         plt.close()
 
-        # === Balanced Accuracy ===
+        # Balanced Accuracy Plot
         plt.bar(["Balanced Acc"], [bal_acc])
         plt.title("Balanced Accuracy")
         balacc_png = os.path.join(artifact_dir, "balanced_accuracy_plot.png")
@@ -111,40 +99,31 @@ if __name__ == "__main__":
         mlflow.log_artifact(balacc_png, artifact_path="model")
         plt.close()
 
-        # === ROC Curve (binary) ===
-        try:
-            if y_proba.shape[1] == 2:
-                fpr, tpr, _ = roc_curve(y_test, y_proba[:, 1], pos_label=model.classes_[1])
-                roc_auc = auc(fpr, tpr)
-                plt.plot(fpr, tpr, label=f"AUC = {roc_auc:.2f}")
-                plt.xlabel("False Positive Rate")
-                plt.ylabel("True Positive Rate")
-                plt.title("ROC Curve")
-                plt.legend(loc="lower right")
-                roc_png = os.path.join(artifact_dir, "roc_curve.png")
-                plt.savefig(roc_png)
-                mlflow.log_artifact(roc_png, artifact_path="model")
-                plt.close()
-        except Exception as e:
-            print("ROC curve skipped:", e)
+        # ROC Curve
+        fpr, tpr, _ = roc_curve(y_test, y_proba[:, 1], pos_label=model.classes_[1])
+        roc_auc = auc(fpr, tpr)
+        plt.plot(fpr, tpr, label=f"ROC curve (AUC = {roc_auc:.2f})")
+        plt.xlabel("False Positive Rate")
+        plt.ylabel("True Positive Rate")
+        plt.title("Training ROC Curve")
+        plt.legend(loc="lower right")
+        roc_png = os.path.join(model_dir, "training_roc_curve.png")
+        plt.savefig(roc_png)
+        mlflow.log_artifact(roc_png)
+        plt.close()
 
-        # === Precision-Recall Curve (binary) ===
-        try:
-            if y_proba.shape[1] == 2:
-                from sklearn.metrics import precision_recall_curve
-                precision_curve, recall_curve, _ = precision_recall_curve(y_test, y_proba[:, 1], pos_label=model.classes_[1])
-                plt.plot(recall_curve, precision_curve)
-                plt.xlabel("Recall")
-                plt.ylabel("Precision")
-                plt.title("Precision-Recall Curve")
-                pr_png = os.path.join(artifact_dir, "precision_recall_curve.png")
-                plt.savefig(pr_png)
-                mlflow.log_artifact(pr_png, artifact_path="model")
-                plt.close()
-        except Exception as e:
-            print("PR curve skipped:", e)
+        # Precision-Recall Curve
+        precision_curve, recall_curve, _ = precision_recall_curve(y_test, y_proba[:, 1], pos_label=model.classes_[1])
+        plt.plot(recall_curve, precision_curve)
+        plt.xlabel("Recall")
+        plt.ylabel("Precision")
+        plt.title("Training Precision-Recall Curve")
+        pr_png = os.path.join(model_dir, "training_precision_recall_curve.png")
+        plt.savefig(pr_png)
+        mlflow.log_artifact(pr_png)
+        plt.close()
 
-        # === Simpan metrik ke JSON ===
+        # Buat file metric_info.json
         metric_info = {
             "accuracy": accuracy,
             "precision": precision,
@@ -159,14 +138,14 @@ if __name__ == "__main__":
             json.dump(metric_info, f, indent=4)
         mlflow.log_artifact(metric_path, artifact_path="model")
 
-        # === HTML estimator ===
+        # Membuat file estimator.html
         estimator_html = os.path.join(artifact_dir, "estimator.html")
         with open(estimator_html, "w") as f:
             f.write(f"<h2>RandomForestClassifier</h2><p>n_estimators={n_estimators}, max_depth={max_depth}</p>")
         mlflow.log_artifact(estimator_html, artifact_path="model")
 
-        # === Simpan model ===
+        # Menyimpan Model
         mlflow.sklearn.log_model(model, artifact_path="model")
 
-        print(f"✅ Training selesai — n_estimators={n_estimators}, max_depth={max_depth}")
-        print(f"   Akurasi: {accuracy:.4f}")
+        print(f"Training selesai dengan n_estimators={n_estimators}, max_depth={max_depth}")
+        print(f"Akurasi: {accuracy:.4f}")
